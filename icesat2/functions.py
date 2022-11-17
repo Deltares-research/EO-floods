@@ -7,6 +7,7 @@ import geopandas as gpd
 import numpy as np
 import numba
 from numba import jit, njit
+from shapely.geometry import box
 
 
 
@@ -83,7 +84,7 @@ def parse_atl08(photon_data: dict, track_id: str, track_date: str) -> list:
         :rtype: list of dicts
     """
 
-    rows = []
+    rows = []    
     for beam in photon_data["series"]:
         beam_name = beam["beam"]
         isStrongBeam = beam["isStrongBeam"]
@@ -307,7 +308,7 @@ def filter_icesat2_data(df: pd.DataFrame, clip_geom: np.array) -> pd.DataFrame:
     return df[bool_array]
 
 
-def process_icesat2_for_GEE(df: pd.DataFrame) -> pd.DataFrame:
+def process_icesat2_for_GEE(df: pd.DataFrame, icesat2_product: str) -> pd.DataFrame:
     """Processes a dataframe containing icesat2 points so that the resulting dataframe
     is ready for uploading to Google Earth Engine
 
@@ -316,9 +317,10 @@ def process_icesat2_for_GEE(df: pd.DataFrame) -> pd.DataFrame:
     :return: A dataframe with renamed columns and encoded series data
     :rtype: pd.DataFrame
     """
-    df.series = df.series.map(
-        {"High": 0, "Medium": 1, "Low": 2, "Buffer": 3, "Noise": 4}
-    )
+    if icesat2_product == "atl03":
+        df.series = df.series.map(
+            {"High": 0, "Medium": 1, "Low": 2, "Buffer": 3, "Noise": 4}
+        )
     df.date = pd.to_datetime(df.date).values.astype(np.int64) // 10**6
 
     df = df.rename(
@@ -350,7 +352,7 @@ def get_icesat2_data(
 
             # This function will request the 6 beams data using OpenAltimetry's API
             photon_data = get_icesat2_data_from_OA_api(
-                icesat2_product="atl03",
+                icesat2_product=icesat2_product,
                 boundingbox=bounds,
                 track_date=track_date,
                 track_id=track_id,
@@ -376,12 +378,18 @@ def get_icesat2_data(
                     print("no points within reservoir convex hull")
                     continue
 
-                df = process_icesat2_for_GEE(df)
+                df = process_icesat2_for_GEE(df, icesat2_product)
 
                 df_concat = pd.concat([df_concat, df])
     if df_concat.empty:
         print("No icesat2 data found for given aoi")
     return df_concat    
+
+def boundingbox_to_gdf(bbox: list, id: int,flood_date: str, crs: int = 4326) -> gpd.GeoDataFrame:
+    geom = box(*bbox)
+    
+    return gpd.GeoDataFrame(data={"id":[id,], "flood_date": [flood_date]}, geometry=[geom], crs=crs)
+
 
 
 
