@@ -1,0 +1,13 @@
+name: EO-floods
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - geopandas=0.10.2
+  - numba=0.54.1
+  - numpy=1.20.3
+  - pandas=1.4.0
+  - pip:    
+    - retry==0.9.2
+    
