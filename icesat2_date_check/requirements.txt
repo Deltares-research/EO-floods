@@ -1,0 +1,4 @@
+jupyterlab
+retry
+pandas
+geopandas
