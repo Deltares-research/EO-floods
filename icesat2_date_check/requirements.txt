@@ -1,4 +1,0 @@
-jupyterlab
-retry
-pandas
-geopandas
