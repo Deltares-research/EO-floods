@@ -2,10 +2,12 @@ import abc
 from abc import ABC
 from datetime import datetime
 
-class FloodMap(ABC):
 
+class FloodMap(ABC):
     @abc.abstractmethod
-    def __init__(self, geometry, start_date: datetime, end_date: datetime, dataset: str ) -> None:
+    def __init__(
+        self, geometry, start_date: datetime, end_date: datetime, dataset: str
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -15,11 +17,11 @@ class FloodMap(ABC):
     @abc.abstractmethod
     def flood_depths(self):
         pass
-    
+
     @abc.abstractmethod
     def data_preview(self):
         pass
-    
+
     @abc.abstractmethod
     def maximum_extent(self):
         pass
@@ -39,5 +41,3 @@ class FloodMap(ABC):
     @abc.abstractmethod
     def export_data(self):
         pass
-
-        
