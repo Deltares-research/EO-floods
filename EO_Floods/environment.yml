@@ -6,7 +6,6 @@ dependencies:
   - pip
   - pip:
     - hydrafloods
-    - pydantic
-    - geojson-pydantic
+
 
 

@@ -10,7 +10,6 @@ from numba import jit, njit
 from shapely.geometry import box
 
 
-
 def get_overpasses(track_ids):
     """Retrieves all overpasses for the given track ids
 
@@ -44,15 +43,29 @@ def get_track_ids(coordinates):
     return data["output"]["track"]
 
 
-def get_icesat2_data_from_OA_api(icesat2_product: str, boundingbox: list, track_date: str, track_id: str, series_included= ["Medium", "High"]) -> dict :
-    
-    series_included = "".join(["photonConfidence[]="+series.lower() for series in series_included])
+def get_icesat2_data_from_OA_api(
+    icesat2_product: str,
+    boundingbox: list,
+    track_date: str,
+    track_id: str,
+    series_included=["Medium", "High"],
+) -> dict:
+    series_included = "".join(
+        ["photonConfidence[]=" + series.lower() for series in series_included]
+    )
     minx, miny, maxx, maxy = boundingbox
     OA_API_URL = (
         "https://openaltimetry.org/data/api/icesat2/{}?"
         "&minx={}&miny={}&maxx={}&maxy={}&date={}&trackId={}&{}"
         "&beamName=gt3r&beamName=gt3l&beamName=gt2r&beamName=gt2l&beamName=gt1r&beamName=gt1l".format(
-            icesat2_product, minx, miny, maxx, maxy, track_date, track_id,series_included 
+            icesat2_product,
+            minx,
+            miny,
+            maxx,
+            maxy,
+            track_date,
+            track_id,
+            series_included,
         )
     )
     return api_get_call(OA_API_URL)
@@ -70,6 +83,7 @@ def api_get_call(url):
     with requests.get(url) as response:
         return response.json()
 
+
 def parse_atl08(photon_data: dict, track_id: str, track_date: str) -> list:
     """Parses a dictionary containing data on the atl08 icesat2 product. The dictionary must be
     from the response of the open altimetry API request for requesting icesat2 data.
@@ -84,7 +98,7 @@ def parse_atl08(photon_data: dict, track_id: str, track_date: str) -> list:
         :rtype: list of dicts
     """
 
-    rows = []    
+    rows = []
     for beam in photon_data["series"]:
         beam_name = beam["beam"]
         isStrongBeam = beam["isStrongBeam"]
@@ -100,6 +114,7 @@ def parse_atl08(photon_data: dict, track_id: str, track_date: str) -> list:
             }
             rows.append(row)
     return rows
+
 
 def parse_atl03(photon_data: dict, track_id: str, track_date: str) -> list:
     """Parses a dictionary containing data on the atl03 icesat2 product. The dictionary must
@@ -136,8 +151,9 @@ def parse_atl03(photon_data: dict, track_id: str, track_date: str) -> list:
                 rows.append(row)
     return rows
 
+
 def expand_dates(dates):
-    expanded_dates =[]
+    expanded_dates = []
     for date in dates:
         date_1 = datetime.strptime(date, "%Y-%m-%d")
         date_0 = date_1 - timedelta(days=1)
@@ -145,20 +161,23 @@ def expand_dates(dates):
         expanded_dates.append(date_0)
         expanded_dates.append(date_1)
         expanded_dates.append(date_2)
-    expanded_dates = list(set([datetime.strftime(date, "%Y-%m-%d") for date in expanded_dates]))
+    expanded_dates = list(
+        set([datetime.strftime(date, "%Y-%m-%d") for date in expanded_dates])
+    )
     return expanded_dates
 
 
-
 def rewrite_dates(dates):
-   return [datetime.strftime(datetime.strptime(date,"%d-%m-%Y"), "%Y-%m-%d") for date in dates]
-    
+    return [
+        datetime.strftime(datetime.strptime(date, "%d-%m-%Y"), "%Y-%m-%d")
+        for date in dates
+    ]
+
 
 def date_checker(aoi: list, dates: list):
     dates = rewrite_dates(dates)
-    
 
-    track_ids =  get_track_ids(aoi)
+    track_ids = get_track_ids(aoi)
     overpasses = get_overpasses(track_ids)
     matched_dates = []
     df = pd.DataFrame()
@@ -167,10 +186,12 @@ def date_checker(aoi: list, dates: list):
         for overpass in overpasses:
             if date in overpass[0]:
                 matched_dates.append(overpass)
-    if matched_dates:            
+    if matched_dates:
         for date, trackid in matched_dates:
-            data = get_icesat2_data_from_OA_api("atl08", aoi, track_date=date, track_id=trackid)
-        
+            data = get_icesat2_data_from_OA_api(
+                "atl08", aoi, track_date=date, track_id=trackid
+            )
+
             rows = parse_atl08(data, track_id=trackid, track_date=date)
             if rows:
                 print(f"icesat2 data found for {date}")
@@ -178,10 +199,11 @@ def date_checker(aoi: list, dates: list):
 
                 df = pd.concat([df, df_rows])
                 df.drop_duplicates(inplace=True)
-                
+
         return df
     else:
         print("no icesat2 data found for these dates")
+
 
 def get_bounding_box(aoi: gpd.GeoDataFrame, icesat2_product: str) -> list:
     """Creates a bounding box for a given geodataframe. If the icesat product is
@@ -200,6 +222,7 @@ def get_bounding_box(aoi: gpd.GeoDataFrame, icesat2_product: str) -> list:
     else:
         bounding_box = [bounding_box]
     return bounding_box
+
 
 def bounding_box_tiles(bbox_coords, step_size):
     """Divides a bounding box to smaller bounding boxes given a stepsize
@@ -223,8 +246,11 @@ def bounding_box_tiles(bbox_coords, step_size):
             box_list.append(box)
     return box_list
 
+
 @njit(parallel=True)
-def points_in_polygon_parallel(coordinates: np.ndarray, polygon: np.ndarray) -> np.ndarray:
+def points_in_polygon_parallel(
+    coordinates: np.ndarray, polygon: np.ndarray
+) -> np.ndarray:
     """This function uses a parallelized approach for determining whether multiple
     points are within a polygon.
 
@@ -273,6 +299,7 @@ def point_in_polygon(polygon, point):
 
     return intersections == 0
 
+
 def get_clip_feature(gdf: gpd.GeoDataFrame) -> np.ndarray:
     """Creates a slightly larger (200m buffer) simplified geometry from the
     input geometry in the form of a numpy array with coordinates.
@@ -290,6 +317,7 @@ def get_clip_feature(gdf: gpd.GeoDataFrame) -> np.ndarray:
     gdf = gdf.to_crs(4326)
     geom_array = np.array(gdf.loc[0, "geometry"].exterior.coords)
     return geom_array
+
 
 def filter_icesat2_data(df: pd.DataFrame, clip_geom: np.array) -> pd.DataFrame:
     """Filters a dataframe containing icesat2 data by calling
@@ -332,6 +360,7 @@ def process_icesat2_for_GEE(df: pd.DataFrame, icesat2_product: str) -> pd.DataFr
     )
     return df
 
+
 def get_icesat2_data(
     aoi: gpd.GeoDataFrame,
     clip_geom: bool = True,
@@ -349,7 +378,6 @@ def get_icesat2_data(
         overpasses = get_overpasses(track_ids)
 
         for track_date, track_id in overpasses:
-
             # This function will request the 6 beams data using OpenAltimetry's API
             photon_data = get_icesat2_data_from_OA_api(
                 icesat2_product=icesat2_product,
@@ -373,7 +401,7 @@ def get_icesat2_data(
                     df_filtered = filter_icesat2_data(df, clip_feature)
                     print(len(df_filtered) == len(df))
                     df = df_filtered
-                
+
                 if df.empty:
                     print("no points within reservoir convex hull")
                     continue
@@ -383,18 +411,21 @@ def get_icesat2_data(
                 df_concat = pd.concat([df_concat, df])
     if df_concat.empty:
         print("No icesat2 data found for given aoi")
-    return df_concat    
+    return df_concat
 
-def boundingbox_to_gdf(bbox: list, id: int,flood_date: str, crs: int = 4326) -> gpd.GeoDataFrame:
+
+def boundingbox_to_gdf(
+    bbox: list, id: int, flood_date: str, crs: int = 4326
+) -> gpd.GeoDataFrame:
     geom = box(*bbox)
-    
-    return gpd.GeoDataFrame(data={"id":[id,], "flood_date": [flood_date]}, geometry=[geom], crs=crs)
 
-
-
-
-
-
-
-
-
+    return gpd.GeoDataFrame(
+        data={
+            "id": [
+                id,
+            ],
+            "flood_date": [flood_date],
+        },
+        geometry=[geom],
+        crs=crs,
+    )
