@@ -4,6 +4,9 @@ from typing import Union
 
 import hydrafloods as hf
 import ee
+from shapely.geometry import Polygon
+
+from utils import geom_to_ee_geom
 
 
 class FloodMapHF(FloodMap):
@@ -15,10 +18,10 @@ class FloodMapHF(FloodMap):
         dataset: Union[str, ee.ImageCollection],
         **dataset_kwargs
     ) -> None:
-        self.geometry = geometry
+        self.geometry = geom_to_ee_geom(geometry)
         self.start_date = start_date
         self.end_date = end_date
-        
+
         hf_datasets = {
             "Sentinel 1": hf.Sentinel1,
             "Sentinel 2": hf.Sentinel2,
@@ -45,13 +48,13 @@ class FloodMapHF(FloodMap):
                 **dataset_kwargs
             )
 
+    def data_preview(self):
+        raise NotImplementedError
+
     def flood_extents(self):
         raise NotImplementedError
 
     def flood_depths(self):
-        raise NotImplementedError
-
-    def data_preview(self):
         raise NotImplementedError
 
     def maximum_extent(self):
@@ -68,5 +71,3 @@ class FloodMapHF(FloodMap):
 
     def export_data(self):
         raise NotImplementedError
-
-
