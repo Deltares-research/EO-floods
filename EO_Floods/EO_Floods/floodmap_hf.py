@@ -6,7 +6,7 @@ import ee
 from shapely.geometry import Polygon
 
 from EO_Floods.interface.floodmap import FloodMap
-from EO_Floods.utils import coords_to_ee_geom
+from EO_Floods.utils import coords_to_ee_geom, filter_ee_imgcollection
 
 
 class FloodMapHF(FloodMap):
@@ -38,7 +38,12 @@ class FloodMapHF(FloodMap):
                 **dataset_kwargs
             )
         elif isinstance(dataset, ee.ImageCollection):
-            self.dataset = hf.Dataset.from_imgcollection(dataset, **dataset_kwargs)
+            imgcollection = filter_ee_imgcollection(
+                dataset, start_date, end_date, self.geometry
+            )
+            self.dataset = hf.Dataset.from_imgcollection(
+                imgcollection, **dataset_kwargs
+            )
         else:
             self.dataset = hf.Dataset(
                 region=self.geometry,
@@ -49,7 +54,11 @@ class FloodMapHF(FloodMap):
             )
 
     def data_preview(self):
-        raise NotImplementedError
+        return {
+            "dataset_id": self.dataset.asset_id,
+            "n_images": self.dataset.n_images,
+            "dates": self.dataset.dates,
+        }
 
     def flood_extents(self):
         raise NotImplementedError
