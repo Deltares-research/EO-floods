@@ -31,6 +31,7 @@ class FloodMapHF(FloodMap):
             "MODIS": hf.Modis,
         }
         if dataset in hf_datasets:
+            self.dataset_type = "hf_dataset"
             self.dataset = hf_datasets[dataset](
                 region=self.geometry,
                 start_time=self.start_date,
@@ -38,6 +39,7 @@ class FloodMapHF(FloodMap):
                 **dataset_kwargs
             )
         elif isinstance(dataset, ee.ImageCollection):
+            self.dataset_type = "ee.ImageCollection"
             imgcollection = filter_ee_imgcollection(
                 dataset, start_date, end_date, self.geometry
             )
@@ -45,13 +47,8 @@ class FloodMapHF(FloodMap):
                 imgcollection, **dataset_kwargs
             )
         else:
-            self.dataset = hf.Dataset(
-                region=self.geometry,
-                start_time=self.start_date,
-                end_time=self.end_date,
-                asset_id=dataset,
-                **dataset_kwargs
-            )
+            raise ValueError("Given dataset is not a Hydrafloods dataset or an"
+            " ee.ImageCollection")
 
     def data_preview(self):
         return {
@@ -60,8 +57,8 @@ class FloodMapHF(FloodMap):
             "dates": self.dataset.dates,
         }
 
-    def flood_extents(self):
-        raise NotImplementedError
+    def flood_extents(self, band=None):
+        pass
 
     def flood_depths(self):
         raise NotImplementedError
