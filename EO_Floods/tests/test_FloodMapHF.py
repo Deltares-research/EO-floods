@@ -44,7 +44,3 @@ def test_dataset_preview():
     data_preview = floodmap.data_preview
     assert data_preview["n_images"] == 10
     assert data_preview["dataset_id"] == "COPERNICUS/S1_GRD"
-
-     
-
-
