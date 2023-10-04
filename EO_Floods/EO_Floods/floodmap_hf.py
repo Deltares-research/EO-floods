@@ -1,9 +1,7 @@
-from datetime import datetime
 from typing import Union
 
 import hydrafloods as hf
 import ee
-from shapely.geometry import Polygon
 
 from EO_Floods.interface.floodmap import FloodMap
 from EO_Floods.utils import coords_to_ee_geom, filter_ee_imgcollection
@@ -50,6 +48,7 @@ class FloodMapHF(FloodMap):
             raise ValueError("Given dataset is not a Hydrafloods dataset or an"
             " ee.ImageCollection")
 
+    @property
     def data_preview(self):
         return {
             "dataset_id": self.dataset.asset_id,
