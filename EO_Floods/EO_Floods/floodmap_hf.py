@@ -5,7 +5,11 @@ import ee
 import geemap.foliumap as geemap
 
 from EO_Floods.interface.floodmap import FloodMap
-from EO_Floods.utils import coords_to_ee_geom, filter_ee_imgcollection, decode_date
+from EO_Floods.utils import (
+    coords_to_ee_geom,
+    filter_ee_imgcollection_by_geom,
+    date_parser,
+)
 
 
 class FloodMapHF(FloodMap):
@@ -39,7 +43,7 @@ class FloodMapHF(FloodMap):
             )
         elif isinstance(dataset, ee.ImageCollection):
             self.dataset_type = "ee.ImageCollection"
-            imgcollection = filter_ee_imgcollection(
+            imgcollection = filter_ee_imgcollection_by_geom(
                 dataset, start_date, end_date, self.geometry
             )
             self.dataset = hf.Dataset.from_imgcollection(
@@ -47,7 +51,7 @@ class FloodMapHF(FloodMap):
             )
         else:
             raise ValueError(
-                "Given dataset is not a Hydrafloods dataset or an" " ee.ImageCollection"
+                "Given dataset is not a Hydrafloods dataset or an ee.ImageCollection"
             )
 
     @property
@@ -69,7 +73,7 @@ class FloodMapHF(FloodMap):
             dates = self.dataset.dates
         for date in dates:
             img = self.dataset.collection.filter(
-                ee.Filter.date(decode_date(date))
+                ee.Filter.date(date_parser(date))
             ).first()
             Map.add_layer(img, vis_params, date)
         return Map

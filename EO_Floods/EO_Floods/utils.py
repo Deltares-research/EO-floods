@@ -1,5 +1,6 @@
 import ee
 import datetime
+from dateutil import parser
 
 
 def coords_to_ee_geom(coords: list):
@@ -14,7 +15,7 @@ def coords_to_ee_geom(coords: list):
     return ee.Geometry.Polygon(coords)
 
 
-def filter_ee_imgcollection(
+def filter_ee_imgcollection_by_geom(
     imgcollection: ee.ImageCollection,
     start_date: str,
     end_date: str,
@@ -23,31 +24,49 @@ def filter_ee_imgcollection(
     return imgcollection.filterBounds(filter_geom).filterDate(start_date, end_date)
 
 
-def decode_date(date):
-    """Decodes a date from a command line argument, returning msec since epoch".
+# def decode_date(date):
+#     """Decodes a date from a command line argument, returning msec since epoch".
 
-    args:
-        date (str): date value in a format that can be parsed into datetime object
+#     args:
+#         date (str): date value in a format that can be parsed into datetime object
 
-    returns:
-        datetime.datetime: decoded datetime value
+#     returns:
+#         datetime.datetime: decoded datetime value
 
-    raises:
-        TypeError: if string does not conform to a legal date format.
-    """
+#     raises:
+#         TypeError: if string does not conform to a legal date format.
+#     """
 
-    date_formats = [
-        "%Y%m%d",
-        "%Y-%m-%d",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%dT%H:%M:%S.%f",
-        "%Y-%m-%d %H:%M:%S.%f",
-    ]
-    for date_format in date_formats:
-        try:
-            dt = datetime.datetime.strptime(date, date_format)
-            return dt
-        except ValueError:
-            continue
-    raise TypeError(f"Invalid value for property of type 'date': '{date}'.")
+#     date_formats = [
+#         "%Y%m%d",
+#         "%Y-%m-%d",
+#         "%Y-%m-%dT%H:%M:%S",
+#         "%Y-%m-%d %H:%M:%S",
+#         "%Y-%m-%dT%H:%M:%S.%f",
+#         "%Y-%m-%d %H:%M:%S.%f",
+#     ]
+#     for date_format in date_formats:
+#         try:
+#             dt = datetime.datetime.strptime(date, date_format)
+#             return dt
+#         except ValueError:
+#             continue
+#     raise TypeError(f"Invalid value for property of type 'date': '{date}'.")
+
+
+def date_parser(date_string: str) -> datetime.datetime:
+    """Parses a date string and returns a datetime object.
+
+    Args:
+        date_string (str): A string representing a date in various formats.
+
+    Returns:
+        datetime.datetime or None: A datetime object representing the parsed date
+        if the input string is in a valid date format, or None if the input string
+        does not represent a valid date."""
+    try:
+        # Parse the date string and return the datetime object
+        parsed_date = parser.parse(date_string)
+        return parsed_date
+    except ValueError:
+        raise ValueError("Invalid date string format")

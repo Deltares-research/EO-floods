@@ -19,7 +19,7 @@ class FloodMap(ABC):
         pass
 
     @abc.abstractmethod
-    def data_preview(self):
+    def preview_data(self):
         pass
 
     @abc.abstractmethod
