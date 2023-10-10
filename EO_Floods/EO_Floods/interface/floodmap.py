@@ -15,6 +15,10 @@ class FloodMap(ABC):
         pass
 
     @abc.abstractmethod
+    def plot_flood_extents(self):
+        pass
+
+    @abc.abstractmethod
     def flood_depths(self):
         pass
 

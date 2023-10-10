@@ -24,36 +24,6 @@ def filter_ee_imgcollection_by_geom(
     return imgcollection.filterBounds(filter_geom).filterDate(start_date, end_date)
 
 
-# def decode_date(date):
-#     """Decodes a date from a command line argument, returning msec since epoch".
-
-#     args:
-#         date (str): date value in a format that can be parsed into datetime object
-
-#     returns:
-#         datetime.datetime: decoded datetime value
-
-#     raises:
-#         TypeError: if string does not conform to a legal date format.
-#     """
-
-#     date_formats = [
-#         "%Y%m%d",
-#         "%Y-%m-%d",
-#         "%Y-%m-%dT%H:%M:%S",
-#         "%Y-%m-%d %H:%M:%S",
-#         "%Y-%m-%dT%H:%M:%S.%f",
-#         "%Y-%m-%d %H:%M:%S.%f",
-#     ]
-#     for date_format in date_formats:
-#         try:
-#             dt = datetime.datetime.strptime(date, date_format)
-#             return dt
-#         except ValueError:
-#             continue
-#     raise TypeError(f"Invalid value for property of type 'date': '{date}'.")
-
-
 def date_parser(date_string: str) -> datetime.datetime:
     """Parses a date string and returns a datetime object.
 
