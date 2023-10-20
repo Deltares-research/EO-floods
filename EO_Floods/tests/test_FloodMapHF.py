@@ -1,8 +1,9 @@
-from EO_Floods.floodmap_hf import FloodMapHF
-
 import hydrafloods as hf
 import ee
 import geemap.foliumap as geemap
+import pytest
+
+from EO_Floods.floodmap_hf import FloodMapHF
 
 
 def test_init(hf_floodmap_S1):
@@ -19,6 +20,7 @@ def test_init(hf_floodmap_S1):
         start_date=start_date,
         end_date=end_date,
         dataset=imgcollection,
+        imagery_type="SAR",
     )
     assert isinstance(floodmap.dataset, hf.Dataset)
     assert floodmap.dataset.asset_id == "COPERNICUS/S1_GRD"
@@ -39,3 +41,15 @@ def test_preview_data(hf_floodmap_S1):
         map._children[list(map._children.keys())[-1]].layer_name
         == hf_floodmap_S1.dataset.dates[0]
     )
+
+
+def test_plot_flood_extents(hf_floodmap_S1):
+    with pytest.raises(
+        RuntimeError,
+        match=r"generate_flood_extents\(\) needs to be called before calling this method",
+    ):
+        hf_floodmap_S1.plot_flood_extents()
+
+    hf_floodmap_S1.generate_flood_extents()
+    map = hf_floodmap_S1.plot_flood_extents()
+    assert isinstance(map, geemap.Map)

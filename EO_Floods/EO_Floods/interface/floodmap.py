@@ -11,7 +11,7 @@ class FloodMap(ABC):
         pass
 
     @abc.abstractmethod
-    def flood_extents(self):
+    def generate_flood_extents(self):
         pass
 
     @abc.abstractmethod
