@@ -119,7 +119,7 @@ class FloodMapHF(FloodMap):
             )
             dataset = hf.Dataset.from_imgcollection(clipped_data)
         if self.imagery_type == "optical":
-            dataset = dataset.apply_func(hf.add_indices, indices=["mdnwi"])
+            dataset = dataset.apply_func(hf.add_indices, indices=["mndwi"])
             flood_extent_maps = dataset.apply_func(
                 hf.edge_otsu, band=band, **edge_otsu_options
             )

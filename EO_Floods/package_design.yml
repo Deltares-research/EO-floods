@@ -1,0 +1,69 @@
+Classes:
+  - Floodmap:
+    - description: | 
+        Main entrypoint for user. Warn about space/time constraints,
+        Log and orchestrate total process
+    - inputs:
+      - space
+      - time
+      - [provider]
+      - ([dataset]): Optional(List[ enum.dataset | Dataset ])
+    - functions:
+      - _determine_datasets(space,time)
+      - internal log
+      - user warning space and time constraints
+      - preview_data() -> calls preview data on all datasets and plots on 1 map all layers
+      - generate_floodextents() ->  calls generate generate_floodextents for every dataset
+
+  - Dataset(ABC):
+    description: 
+      Contain data specific defaults for (pre-) processing and visualizations 
+    inputs:
+      - space
+      - time
+      - (visual parameters override)
+      - (algorithm override)
+    properties:
+      - provider
+      - default algorithm
+      - algorithm parameters
+    functions:
+      - preview_data(): -> calls provider.preview_data method
+      - 
+  - OpticalDataset(Dataset):
+    description:
+      base class for all optical datasets containing defaults that can be used for most sets
+  - SARDataset(Dataset):
+    description: 
+     base class for all SAR datasets containing defaults
+  - HydrafloodsDataset(Dataset):
+  
+  - GFMDataset(Dataset):
+
+  - Sentinel1HydrafloodsDataset(SARDataset, Hydrafloods):
+    description:
+      class containing defaults for sentinel 1 Hydrafloods dataset
+    inputs:
+      - space
+      - time
+    properties:
+      - space
+      - time
+      - provider
+      - algorithm
+      - algorithm parameters
+
+
+  - Provider(ABC):
+    description: Perform operations on datasets
+    inputs:
+      - credentials
+      - provider specific things
+    functions:
+      - preview_data
+      - generate_floodextents():
+        args:
+          - algorithm
+          - initial_threshold
+          - invert
+      - generate_flooddepths
