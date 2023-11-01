@@ -9,9 +9,6 @@ from EO_Floods.dataset import Dataset
 from EO_Floods.utils import coords_to_ee_geom
 
 
-
-
-
 class providers(Enum):
     HYDRAFLOODS = "hydrafloods"
     GFM = "GFM"
@@ -28,8 +25,7 @@ class Provider(ABC):
         geometry: list,
     ) -> None:
         pass
-    
-    
+
     @abc.abstractproperty
     def info(self):
         pass
@@ -61,16 +57,15 @@ class HydraFloods(Provider):
         self.start_date = start_date
         self.end_date = end_date
 
-        HF_DATASETS ={
-        "Sentinel-1": hf.Sentinel1(),
-        "Sentinel-2": hf.Sentinel2(),
-        "Landsat 7": hf.Landsat7(),
-        "Landsat 8": hf.Landsat8(),
-        "VIIRS": hf.Viirs(),
-        "MODIS": hf.Modis(),
-    }
+        HF_DATASETS = {
+            "Sentinel-1": hf.Sentinel1(),
+            "Sentinel-2": hf.Sentinel2(),
+            "Landsat 7": hf.Landsat7(),
+            "Landsat 8": hf.Landsat8(),
+            "VIIRS": hf.Viirs(),
+            "MODIS": hf.Modis(),
+        }
 
-        
     def info(self):
         pass
 
