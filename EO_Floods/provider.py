@@ -58,12 +58,12 @@ class HydraFloods(Provider):
         self.end_date = end_date
 
         HF_DATASETS = {
-            "Sentinel-1": hf.Sentinel1(),
-            "Sentinel-2": hf.Sentinel2(),
-            "Landsat 7": hf.Landsat7(),
-            "Landsat 8": hf.Landsat8(),
-            "VIIRS": hf.Viirs(),
-            "MODIS": hf.Modis(),
+            "Sentinel-1": hf.Sentinel1,
+            "Sentinel-2": hf.Sentinel2,
+            "Landsat 7": hf.Landsat7,
+            "Landsat 8": hf.Landsat8,
+            "VIIRS": hf.Viirs,
+            "MODIS": hf.Modis,
         }
 
     def info(self):
