@@ -52,12 +52,12 @@ class HydraFloods(Provider):
         end_date: str,
         geometry: List[float],
     ) -> None:
-        self.datasets = datasets
+        self.pre_configured_datasets = datasets
         self.geometry = coords_to_ee_geom(geometry)
         self.start_date = start_date
         self.end_date = end_date
 
-        HF_DATASETS = {
+        HF_datasets = {
             "Sentinel-1": hf.Sentinel1,
             "Sentinel-2": hf.Sentinel2,
             "Landsat 7": hf.Landsat7,
@@ -65,9 +65,29 @@ class HydraFloods(Provider):
             "VIIRS": hf.Viirs,
             "MODIS": hf.Modis,
         }
+        init_datasets = []
+        for dataset in datasets:
+            init_datasets.append(
+                HF_datasets[dataset.name](
+                    region=self.geometry,
+                    start_time=self.start_date,
+                    end_time=self.end_date,
+                )
+            )
+        self.datasets = init_datasets
 
+    @property
     def info(self):
-        pass
+        dataset_info = []
+        for dataset in self.datasets:
+            dataset_info.append(
+                {
+                    "Dataset ID": dataset.asset_id,
+                    "Number of images": dataset.n_images,
+                    "Dates": dataset.dates,
+                }
+            )
+        return dataset_info
 
     def preview_data(self):
         pass
@@ -80,4 +100,5 @@ class HydraFloods(Provider):
 
 
 class GFM(Provider):
-    raise NotImplementedError
+    def init():
+        raise NotImplementedError

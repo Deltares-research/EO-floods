@@ -3,7 +3,7 @@ import datetime
 from dateutil import parser
 
 
-def coords_to_ee_geom(coords: list):
+def coords_to_ee_geom(coords: list) -> ee.geometry.Geometry:
     if len(coords) == 4:
         xmin, ymin, xmax, ymax = coords
         if not -180 <= xmin <= 180 or not -180 <= xmax <= 180:
