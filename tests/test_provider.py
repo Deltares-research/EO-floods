@@ -1,15 +1,13 @@
 import hydrafloods as hf
 import ee
 
-from EO_Floods.provider import HydraFloods
-from EO_Floods.dataset import DATASETS
 from tests.conftest import get_hydrafloods_instance
 
 
 def test_Hydrafloods_init():
     hydrafloods_provider = get_hydrafloods_instance(["Sentinel-1", "Sentinel-2"])
-    assert isinstance(hydrafloods_provider.datasets[0], hf.Sentinel1)
-    assert isinstance(hydrafloods_provider.datasets[1], hf.Sentinel2)
+    assert isinstance(hydrafloods_provider.datasets[0], dict)
+    assert isinstance(hydrafloods_provider.datasets[0]["hf_object"], hf.Sentinel1)
     assert isinstance(hydrafloods_provider.geometry, ee.geometry.Geometry)
 
 

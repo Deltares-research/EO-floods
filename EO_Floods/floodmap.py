@@ -18,7 +18,7 @@ class FloodMap:
         if isinstance(datasets, str):
             if datasets not in DATASETS.keys():
                 raise ValueError(f"Dataset '{datasets}' not recognized")
-            self.datasets = DATASETS[datasets]
+            self.datasets = [DATASETS[datasets]]
 
         elif isinstance(datasets, list):
             self.datasets = [DATASETS[dataset] for dataset in datasets]
@@ -37,7 +37,7 @@ class FloodMap:
 
     @property
     def info(self):
-        return self.provider.get_info
+        return self.provider.info
 
     def preview_data(self):
         pass

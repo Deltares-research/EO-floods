@@ -4,9 +4,10 @@ from typing import List
 from enum import Enum
 
 import hydrafloods as hf
+import geemap.foliumap as geemap
 
 from EO_Floods.dataset import Dataset
-from EO_Floods.utils import coords_to_ee_geom
+from EO_Floods.utils import coords_to_ee_geom, get_centroid
 
 
 class providers(Enum):
@@ -52,7 +53,7 @@ class HydraFloods(Provider):
         end_date: str,
         geometry: List[float],
     ) -> None:
-        self.pre_configured_datasets = datasets
+        self.centroid = get_centroid(geometry)
         self.geometry = coords_to_ee_geom(geometry)
         self.start_date = start_date
         self.end_date = end_date
@@ -67,13 +68,15 @@ class HydraFloods(Provider):
         }
         init_datasets = []
         for dataset in datasets:
-            init_datasets.append(
-                HF_datasets[dataset.name](
+            dataset_dict = {
+                "config": dataset,
+                "hf_object": HF_datasets[dataset.name](
                     region=self.geometry,
                     start_time=self.start_date,
                     end_time=self.end_date,
-                )
-            )
+                ),
+            }
+            init_datasets.append(dataset_dict)
         self.datasets = init_datasets
 
     @property
@@ -82,15 +85,20 @@ class HydraFloods(Provider):
         for dataset in self.datasets:
             dataset_info.append(
                 {
-                    "Dataset ID": dataset.asset_id,
-                    "Number of images": dataset.n_images,
-                    "Dates": dataset.dates,
+                    "Dataset ID": dataset["hf_object"].asset_id,
+                    "Number of images": dataset["hf_object"].n_images,
+                    "Dates": dataset["hf_object"].dates,
                 }
             )
         return dataset_info
 
-    def preview_data(self):
-        pass
+    def preview_data(self, zoom=7) -> geemap.Map:
+        Map = geemap.Map(center=self.centroid, zoom=zoom)
+        for dataset in self.datasets:
+            Map.add_layer(
+                dataset["hf_object"].collection, vis_params=dataset["config"].visParams
+            )
+        return Map
 
     def generate_flood_extents(self):
         pass
