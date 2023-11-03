@@ -17,12 +17,11 @@ class FloodMap:
 
         if isinstance(datasets, str):
             if datasets not in DATASETS.keys():
-                raise ValueError(f"Dataset name {datasets} not recognized")
+                raise ValueError(f"Dataset '{datasets}' not recognized")
             self.datasets = DATASETS[datasets]
 
         elif isinstance(datasets, list):
             self.datasets = [DATASETS[dataset] for dataset in datasets]
-
         if provider == "hydrafloods":
             self.provider = HydraFloods(
                 credentials={},
@@ -34,11 +33,11 @@ class FloodMap:
         elif provider == "GFM":
             self.provider = GFM()
         else:
-            raise ValueError(f"Provider {provider} not recognized")
+            raise ValueError(f"Provider '{provider}' not recognized")
 
     @property
     def info(self):
-        pass
+        return self.provider.get_info
 
     def preview_data(self):
         pass
