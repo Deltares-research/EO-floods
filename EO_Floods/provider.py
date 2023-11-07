@@ -5,9 +5,11 @@ from enum import Enum
 
 import hydrafloods as hf
 import geemap.foliumap as geemap
+import ee
 
-from EO_Floods.dataset import Dataset
-from EO_Floods.utils import coords_to_ee_geom, get_centroid
+from EO_Floods.dataset import Dataset, ImageryType, DATASETS
+from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
+from EO_Floods.config import settings
 
 
 class providers(Enum):
@@ -16,7 +18,6 @@ class providers(Enum):
 
 
 class Provider(ABC):
-    @abc.abstractmethod
     def __init__(
         self,
         credentials,
@@ -43,6 +44,42 @@ class Provider(ABC):
     def generate_flood_depths(self):
         pass
 
+    @abc.abstractmethod
+    def plot_flood_extents(self):
+        pass
+
+    @abc.abstractmethod
+    def plot_flood_depths(self):
+        pass
+
+
+class HydraFloodsDataset:
+    def __init__(
+        self,
+        dataset: Dataset,
+        region: ee.geometry.Geometry,
+        start_date: str,
+        end_date: str,
+    ):
+        HF_datasets = {
+            "Sentinel-1": hf.Sentinel1,
+            "Sentinel-2": hf.Sentinel2,
+            "Landsat 7": hf.Landsat7,
+            "Landsat 8": hf.Landsat8,
+            "VIIRS": hf.Viirs,
+            "MODIS": hf.Modis,
+        }
+        self.name: str = dataset.name
+        self.imagery_type: ImageryType = dataset.imagery_type
+        self.default_flood_extent_algorithm: (
+            str
+        ) = dataset.default_flood_extent_algorithm
+        self.algorithm_params: dict = dataset.algorithm_params
+        self.visual_params: dict = dataset.visual_params
+        self.obj: hf.Dataset = HF_datasets[dataset.name](
+            region=region, start_time=start_date, end_time=end_date
+        )
+
 
 class HydraFloods(Provider):
     def __init__(
@@ -57,37 +94,22 @@ class HydraFloods(Provider):
         self.geometry = coords_to_ee_geom(geometry)
         self.start_date = start_date
         self.end_date = end_date
-
-        HF_datasets = {
-            "Sentinel-1": hf.Sentinel1,
-            "Sentinel-2": hf.Sentinel2,
-            "Landsat 7": hf.Landsat7,
-            "Landsat 8": hf.Landsat8,
-            "VIIRS": hf.Viirs,
-            "MODIS": hf.Modis,
-        }
-        init_datasets = []
-        for dataset in datasets:
-            dataset_dict = {
-                "config": dataset,
-                "hf_object": HF_datasets[dataset.name](
-                    region=self.geometry,
-                    start_time=self.start_date,
-                    end_time=self.end_date,
-                ),
-            }
-            init_datasets.append(dataset_dict)
-        self.datasets = init_datasets
+        self.initial_datasets = datasets
+        self.datasets = [
+            HydraFloodsDataset(dataset, self.geometry, start_date, end_date)
+            for dataset in datasets
+        ]
 
     @property
-    def info(self):
+    def info(self) -> List[dict]:
         dataset_info = []
         for dataset in self.datasets:
             dataset_info.append(
                 {
-                    "Dataset ID": dataset["hf_object"].asset_id,
-                    "Number of images": dataset["hf_object"].n_images,
-                    "Dates": dataset["hf_object"].dates,
+                    "Name": dataset.name,
+                    "Dataset ID": dataset.obj.asset_id,
+                    "Number of images": dataset.obj.n_images,
+                    "Dates": dataset.obj.dates,
                 }
             )
         return dataset_info
@@ -95,15 +117,66 @@ class HydraFloods(Provider):
     def preview_data(self, zoom=7) -> geemap.Map:
         Map = geemap.Map(center=self.centroid, zoom=zoom)
         for dataset in self.datasets:
-            Map.add_layer(
-                dataset["hf_object"].collection, vis_params=dataset["config"].visParams
-            )
+            Map.add_layer(dataset.obj.collection, vis_params=dataset.visual_params)
         return Map
 
-    def generate_flood_extents(self):
-        pass
+    def select_data(
+        self,
+        datasets: List[str] | str = None,
+        start_date: str = None,
+        end_date: str = None,
+    ) -> List[dict]:
+        if isinstance(datasets, str):
+            datasets = [datasets]
+
+        if not all([start_date, end_date]):
+            start_date = self.start_date
+            end_date = self.end_date
+
+        if not datasets:
+            datasets = [dataset.name for dataset in self.datasets]
+
+        self.datasets = [
+            HydraFloodsDataset(
+                DATASETS[dataset_name], self.geometry, start_date, end_date
+            )
+            for dataset_name in datasets
+        ]
+        return self.info
+
+    def generate_flood_extents(self, clip_ocean: bool = True) -> list:
+        flood_extents = []
+        for dataset in self.datasets:
+            if clip_ocean:
+                country_boundary = (
+                    settings.country_boundaries_dataset.filterBounds(self.geometry)
+                    .first()
+                    .geometry()
+                )
+                clipped_data = dataset.obj.collection.map(
+                    lambda img: img.clip(country_boundary)
+                )
+                dataset.obj = hf.Dataset.from_imgcollection(clipped_data)
+            if dataset.imagery_type == ImageryType.OPTICAL:
+                dataset.obj.apply_func(
+                    hf.add_indices,
+                    indices=dataset.algorithm_params["edge_otsu"]["band"],
+                )
+            flood_extent = dataset.obj.apply_func(
+                hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
+            )
+
+            flood_extents.append(flood_extent)
+        self.flood_extents = flood_extents
+        return flood_extents
 
     def generate_flood_depths(self):
+        pass
+
+    def plot_flood_extents():
+        pass
+
+    def plot_flood_depths(self):
         pass
 
 

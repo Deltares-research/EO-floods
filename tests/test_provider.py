@@ -1,13 +1,17 @@
 import hydrafloods as hf
 import ee
+import geemap.foliumap as geemap
 
+from EO_Floods.dataset import DATASETS
+from EO_Floods.provider import HydraFloodsDataset
+from EO_Floods.utils import date_parser
 from tests.conftest import get_hydrafloods_instance
 
 
 def test_Hydrafloods_init():
     hydrafloods_provider = get_hydrafloods_instance(["Sentinel-1", "Sentinel-2"])
-    assert isinstance(hydrafloods_provider.datasets[0], dict)
-    assert isinstance(hydrafloods_provider.datasets[0]["hf_object"], hf.Sentinel1)
+    assert isinstance(hydrafloods_provider.datasets[0], HydraFloodsDataset)
+    assert isinstance(hydrafloods_provider.datasets[0].obj, hf.Sentinel1)
     assert isinstance(hydrafloods_provider.geometry, ee.geometry.Geometry)
 
 
@@ -20,3 +24,29 @@ def test_Hydrafloods_info():
     assert all([a == b for a, b in zip(expected_keys, actual_keys)])
     assert data_info[0]["Dataset ID"] == "COPERNICUS/S1_GRD"
     assert data_info[0]["Number of images"] == 10
+
+
+def test_preview_data():
+    hydrafloods_provider = get_hydrafloods_instance(["Sentinel-1", "Sentinel-2"])
+    map = hydrafloods_provider.preview_data()
+    assert isinstance(map, geemap.Map)
+
+
+def test_select_data():
+    hydrafloods_provider = get_hydrafloods_instance(
+        ["Sentinel-1", "Sentinel-2", "Landsat 8"]
+    )
+    datasets = "Sentinel-1"
+    hydrafloods_provider_info = hydrafloods_provider.select_data(datasets)
+    assert isinstance(hydrafloods_provider_info, list)
+    assert len(hydrafloods_provider_info) == 1
+    assert hydrafloods_provider_info[0]["Name"] == "Sentinel-1"
+    assert len(hydrafloods_provider.datasets) == 1
+
+    hydrafloods_provider_2 = get_hydrafloods_instance(["Sentinel-1", "Sentinel-2"])
+    start_date = str(date_parser(hydrafloods_provider.datasets[0].obj.dates[0]).date())
+    end_date = str(date_parser(hydrafloods_provider.datasets[0].obj.dates[4]).date())
+    hydrafloods_provider_info = hydrafloods_provider_2.select_data(
+        datasets="Sentinel-1", start_date=start_date, end_date=end_date
+    )
+    assert isinstance(hydrafloods_provider_info, list)

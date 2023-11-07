@@ -1,4 +1,5 @@
 import pytest
+import geemap.foliumap as geemap
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
@@ -48,3 +49,15 @@ def test_FloodMap_info():
     assert isinstance(floodmap_info, list)
     assert isinstance(floodmap_info[0], dict)
     assert floodmap_info[0]["Number of images"] == 10
+
+
+def test_FloodMap_preview_data():
+    floodmap = FloodMap(
+        start_date="2023-04-01",
+        end_date="2023-04-30",
+        geometry=[4.221067, 51.949474, 4.471006, 52.073727],
+        datasets="Sentinel-2",
+        provider="hydrafloods",
+    )
+    map = floodmap.preview_data()
+    assert isinstance(map, geemap.Map)

@@ -1,4 +1,6 @@
-from EO_Floods.dataset import DATASETS
+from typing import List
+
+from EO_Floods.dataset import DATASETS, Dataset
 from EO_Floods.provider import providers, HydraFloods, GFM
 
 
@@ -7,21 +9,14 @@ class FloodMap:
         self,
         start_date: str,
         end_date: str,
-        geometry: list,
-        datasets: list | str = None,
+        geometry: List[float],
+        datasets: List[str] | str = None,
         provider: providers = providers.HYDRAFLOODS,
     ) -> None:
         self.start_date = start_date
         self.end_date = end_date
         self.geometry = geometry
-
-        if isinstance(datasets, str):
-            if datasets not in DATASETS.keys():
-                raise ValueError(f"Dataset '{datasets}' not recognized")
-            self.datasets = [DATASETS[datasets]]
-
-        elif isinstance(datasets, list):
-            self.datasets = [DATASETS[dataset] for dataset in datasets]
+        self.datasets = _instantiate_datasets(datasets)
         if provider == "hydrafloods":
             self.provider = HydraFloods(
                 credentials={},
@@ -39,11 +34,34 @@ class FloodMap:
     def info(self):
         return self.provider.info
 
-    def preview_data(self):
-        pass
+    def preview_data(self, **kwargs):
+        return self.provider.preview_data(**kwargs)
+
+    def select_data(
+        self,
+        datasets: List[str] | str = None,
+        start_date: str = None,
+        end_date: str = None,
+    ) -> List[dict]:
+        self.datasets = _instantiate_datasets(datasets)
+        return self.provider.select_data(datasets, start_date, end_date)
 
     def generate_flood_extents(self):
-        pass
+        return self.provider.generate_flood_extents()
+
+    def generate_flood_depths(self, **kwargs):
+        return self.provider.generate_flood_depths(**kwargs)
+
+
+@staticmethod
+def _instantiate_datasets(datasets: List[str] | str) -> List[Dataset]:
+    if isinstance(datasets, str):
+        if datasets not in DATASETS.keys():
+            raise ValueError(f"Dataset '{datasets}' not recognized")
+        return [DATASETS[datasets]]
+
+    elif isinstance(datasets, list):
+        return [DATASETS[dataset] for dataset in datasets]
 
 
 @staticmethod

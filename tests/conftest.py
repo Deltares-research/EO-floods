@@ -1,7 +1,10 @@
 import pytest
+import ee
 
 from EO_Floods.dataset import DATASETS
 from EO_Floods.provider import HydraFloods
+
+ee.Initialize()
 
 
 def get_hydrafloods_instance(dataset_list: list) -> HydraFloods:
