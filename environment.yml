@@ -5,6 +5,7 @@ channels:
 dependencies:
   - pip
   - pytest
+  - pydantic
   - pip:
     - hydrafloods
     - geemap
