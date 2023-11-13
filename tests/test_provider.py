@@ -19,7 +19,7 @@ def test_Hydrafloods_info():
     hydrafloods_provider = get_hydrafloods_instance(["Sentinel-1"])
     data_info = hydrafloods_provider.info
     assert isinstance(data_info, list)
-    expected_keys = ["Dataset ID", "Number of images", "Dates"]
+    expected_keys = ["Name", "Dataset ID", "Number of images", "Dates"]
     actual_keys = list(data_info[0].keys())
     assert all([a == b for a, b in zip(expected_keys, actual_keys)])
     assert data_info[0]["Dataset ID"] == "COPERNICUS/S1_GRD"
@@ -50,3 +50,8 @@ def test_select_data():
         datasets="Sentinel-1", start_date=start_date, end_date=end_date
     )
     assert isinstance(hydrafloods_provider_info, list)
+    dates = hydrafloods_provider_info[0]["Dates"]
+    start_date = date_parser(start_date)
+    end_date = date_parser(end_date)
+    for date in dates:
+        assert start_date <= date_parser(date) <= end_date
