@@ -1,6 +1,7 @@
 import hydrafloods as hf
 import ee
 import geemap.foliumap as geemap
+import pytest
 
 from EO_Floods.dataset import DATASETS
 from EO_Floods.provider import HydraFloodsDataset
@@ -55,3 +56,30 @@ def test_select_data():
     end_date = date_parser(end_date)
     for date in dates:
         assert start_date <= date_parser(date) <= end_date
+
+
+def test_generate_flood_extents():
+    hf_provider = get_hydrafloods_instance(["Sentinel-1"])
+    flood_extents = hf_provider.generate_flood_extents()
+    assert isinstance(flood_extents, dict)
+    assert "Sentinel-1" == list(flood_extents.keys())[0]
+
+    hf_provider = get_hydrafloods_instance(["Sentinel-2"])
+    with pytest.warns(
+        UserWarning,
+        match=r"Sentinel-2 has no images for date range 2023-04-01 - 2023-04-30.",
+    ):
+        flood_extents = hf_provider.generate_flood_extents()
+
+
+def test_plot_flood_extents():
+    hf_provider = get_hydrafloods_instance(["Sentinel-1"])
+    with pytest.raises(
+        RuntimeError,
+        match=r"generate_flood_extents\(\) needs to be called before calling this method",
+    ):
+        hf_provider.plot_flood_extents()
+
+    hf_provider.generate_flood_extents()
+    plot = hf_provider.plot_flood_extents()
+    assert isinstance(plot, geemap.Map)
