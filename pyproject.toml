@@ -5,9 +5,14 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "EO_Floods"
 authors = [{name = "Tjalling de Jong", email = "tjalling.dejong@deltares.nl"}]
+dependecies = [
+    "hydrafloods"
+]
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
+
+
 
 [project.urls]
 Home = "https://github.com/Deltares/EO_Floods"

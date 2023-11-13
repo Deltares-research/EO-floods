@@ -1,11 +1,13 @@
-name: EO-floods
+name: EO-Floods
 channels:
   - conda-forge
   - defaults
 dependencies:
   - pip
+  - pytest
   - pip:
     - hydrafloods
+    - geemap
 
 
 
