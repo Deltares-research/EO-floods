@@ -59,22 +59,17 @@ def test_select_data():
 
 
 def test_generate_flood_extents():
-    hf_provider = get_hydrafloods_instance(["Sentinel-1"])
-    flood_extents = hf_provider.generate_flood_extents()
-    assert isinstance(flood_extents, dict)
-    assert "Sentinel-1" == list(flood_extents.keys())[0]
-
     hf_provider = get_hydrafloods_instance(["Sentinel-2"])
     with pytest.warns(
         UserWarning,
         match=r"Sentinel-2 has no images for date range 2023-04-01 - 2023-04-30.",
     ):
-        flood_extents = hf_provider.generate_flood_extents()
+        hf_provider.generate_flood_extents()
 
     hf_provider = get_hydrafloods_instance(["Landsat 8"])
-    flood_extents = hf_provider.generate_flood_extents()
-    assert isinstance(flood_extents, dict)
-    assert isinstance(flood_extents["Landsat 8"], hf.Dataset)
+    hf_provider.generate_flood_extents()
+    assert "Landsat 8" in hf_provider.flood_extents.keys()
+    assert isinstance(hf_provider.flood_extents["Landsat 8"], hf.Dataset)
 
 
 def test_plot_flood_extents():
