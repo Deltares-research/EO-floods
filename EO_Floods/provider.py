@@ -3,6 +3,7 @@ from abc import ABC
 from typing import List, Optional
 from enum import Enum
 import warnings
+import datetime
 
 import hydrafloods as hf
 import geemap.foliumap as geemap
@@ -116,7 +117,17 @@ class HydraFloods(Provider):
         return dataset_info
 
     def preview_data(self, zoom=7) -> geemap.Map:
-        return _map_data_by_dates(self.datasets, self.centroid)
+        Map = geemap.Map(center=self.centroid, zoom=zoom)
+        for dataset in self.datasets:
+            dates = dataset.obj.dates
+            for date in dates:
+                img = dataset.obj.collection.filter(ee.Filter.date(date_parser(date)))
+                Map.add_layer(
+                    img,
+                    vis_params=dataset.visual_params,
+                    name=f"{dataset.name} {date}",
+                )
+        return Map
 
     def select_data(
         self,
@@ -165,6 +176,7 @@ class HydraFloods(Provider):
                 dataset.obj.apply_func(
                     hf.add_indices,
                     indices=[dataset.algorithm_params["edge_otsu"]["band"]],
+                    inplace=True,
                 )
             flood_extent = dataset.obj.apply_func(
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
@@ -176,12 +188,34 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, **kwargs):
+    def plot_flood_extents(self, zoom=7, **kwargs):
         if not hasattr(self, "flood_extents"):
             raise RuntimeError(
                 "generate_flood_extents() needs to be called before calling this method"
             )
-        return _map_data_by_dates(self.datasets, center=self.centroid, zoom=7, **kwargs)
+
+        flood_extent_vis_params = {
+            "bands": ["water"],
+            "min": 0,
+            "max": 1,
+            "palette": ["#C0C0C0", "#000080"],
+        }
+        map = geemap.Map(center=self.centroid, zoom=zoom)
+        for ds_name in self.flood_extents:
+            for date in self.flood_extents[ds_name].dates:
+                img = (
+                    self.flood_extents[ds_name].collection.filter(
+                        ee.Filter.date(
+                            date_parser(date),
+                            date_parser(date) + datetime.timedelta(days=1),
+                        ),
+                    )
+                ).mode()
+
+                map.add_layer(
+                    img, vis_params=flood_extent_vis_params, name=f"{ds_name} {date}"
+                )
+        return map
 
     def plot_flood_depths(self):
         pass
@@ -191,6 +225,7 @@ class HydraFloods(Provider):
 def _map_data_by_dates(
     datasets: List[hf.Dataset],
     center: list,
+    mapping_type: str,
     zoom: int = 7,
 ) -> geemap.Map:
     Map = geemap.Map(center=center, zoom=zoom)
@@ -200,7 +235,9 @@ def _map_data_by_dates(
         for date in dates:
             img = dataset.obj.collection.filter(ee.Filter.date(date_parser(date)))
             Map.add_layer(
-                img, vis_params=dataset.visual_params, name=f"{dataset.name} {date}"
+                img,
+                vis_params=dataset.visual_params[mapping_type],
+                name=f"{dataset.name} {date}",
             )
     return Map
 

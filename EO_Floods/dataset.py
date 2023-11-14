@@ -36,7 +36,7 @@ class Landsat7(Dataset):
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
-    visual_params: dict = {"bands": ["swir1", "nir", "green"], "min": 0, "max": 0.5}
+    visual_params: dict = ({"bands": ["swir1", "nir", "green"], "min": 0, "max": 0.5},)
 
 
 class Landsat8(Dataset):
