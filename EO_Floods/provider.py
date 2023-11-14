@@ -1,6 +1,6 @@
 import abc
 from abc import ABC
-from typing import List, Optional
+from typing import List
 from enum import Enum
 import warnings
 import datetime
@@ -219,27 +219,6 @@ class HydraFloods(Provider):
 
     def plot_flood_depths(self):
         pass
-
-
-@staticmethod
-def _map_data_by_dates(
-    datasets: List[hf.Dataset],
-    center: list,
-    mapping_type: str,
-    zoom: int = 7,
-) -> geemap.Map:
-    Map = geemap.Map(center=center, zoom=zoom)
-
-    for dataset in datasets:
-        dates = dataset.obj.dates
-        for date in dates:
-            img = dataset.obj.collection.filter(ee.Filter.date(date_parser(date)))
-            Map.add_layer(
-                img,
-                vis_params=dataset.visual_params[mapping_type],
-                name=f"{dataset.name} {date}",
-            )
-    return Map
 
 
 class GFM(Provider):
