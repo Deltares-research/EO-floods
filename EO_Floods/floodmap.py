@@ -47,7 +47,7 @@ class FloodMap:
         return self.provider.select_data(datasets, start_date, end_date)
 
     def generate_flood_extents(self):
-        return self.provider.generate_flood_extents()
+        self.provider.generate_flood_extents()
 
     def generate_flood_depths(self, **kwargs):
         return self.provider.generate_flood_depths(**kwargs)

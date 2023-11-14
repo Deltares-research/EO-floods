@@ -1,5 +1,6 @@
 import pytest
 import geemap.foliumap as geemap
+import hydrafloods as hf
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
@@ -61,3 +62,23 @@ def test_FloodMap_preview_data():
     )
     map = floodmap.preview_data()
     assert isinstance(map, geemap.Map)
+
+
+def test_FloodMap_workflow():
+    floodmap = FloodMap(
+        start_date="2023-04-01",
+        end_date="2023-04-30",
+        geometry=[4.221067, 51.949474, 4.471006, 52.073727],
+        datasets="Landsat 8",
+        provider="hydrafloods",
+    )
+    info = floodmap.info
+    assert isinstance(info, list)
+    preview = floodmap.preview_data()
+    assert isinstance(preview, geemap.Map)
+    data_selection = floodmap.select_data(
+        datasets="Landsat 8", start_date="2023-04-03", end_date="2023-04-04"
+    )
+    assert isinstance(data_selection, list)
+    flood_extents = floodmap.generate_flood_extents()
+    assert isinstance(flood_extents["Landsat 8"], hf.Dataset)

@@ -142,7 +142,7 @@ class HydraFloods(Provider):
         ]
         return self.info
 
-    def generate_flood_extents(self, clip_ocean: bool = True) -> list:
+    def generate_flood_extents(self, clip_ocean: bool = True) -> None:
         flood_extents = {}
         for dataset in self.datasets:
             if dataset.obj.n_images < 1:
@@ -164,7 +164,7 @@ class HydraFloods(Provider):
             if dataset.imagery_type == ImageryType.OPTICAL:
                 dataset.obj.apply_func(
                     hf.add_indices,
-                    indices=dataset.algorithm_params["edge_otsu"]["band"],
+                    indices=[dataset.algorithm_params["edge_otsu"]["band"]],
                 )
             flood_extent = dataset.obj.apply_func(
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
@@ -172,7 +172,6 @@ class HydraFloods(Provider):
 
             flood_extents[dataset.name] = flood_extent
         self.flood_extents = flood_extents
-        return flood_extents
 
     def generate_flood_depths(self):
         pass
@@ -193,15 +192,16 @@ def _map_data_by_dates(
     datasets: List[hf.Dataset],
     center: list,
     zoom: int = 7,
-    dates: Optional[list] = None,
 ) -> geemap.Map:
     Map = geemap.Map(center=center, zoom=zoom)
-    if not dates:
-        dates = datasets[0].obj.dates
+
     for dataset in datasets:
+        dates = dataset.obj.dates
         for date in dates:
             img = dataset.obj.collection.filter(ee.Filter.date(date_parser(date)))
-            Map.add_layer(img, dataset.visual_params, f"{dataset.name} {date}")
+            Map.add_layer(
+                img, vis_params=dataset.visual_params, name=f"{dataset.name} {date}"
+            )
     return Map
 
 

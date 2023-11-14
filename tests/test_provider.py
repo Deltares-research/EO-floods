@@ -71,6 +71,11 @@ def test_generate_flood_extents():
     ):
         flood_extents = hf_provider.generate_flood_extents()
 
+    hf_provider = get_hydrafloods_instance(["Landsat 8"])
+    flood_extents = hf_provider.generate_flood_extents()
+    assert isinstance(flood_extents, dict)
+    assert isinstance(flood_extents["Landsat 8"], hf.Dataset)
+
 
 def test_plot_flood_extents():
     hf_provider = get_hydrafloods_instance(["Sentinel-1"])
