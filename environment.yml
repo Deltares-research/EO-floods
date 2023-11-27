@@ -6,6 +6,7 @@ dependencies:
   - pip
   - pytest
   - pydantic
+  - jupyter
   - pip:
     - hydrafloods
     - geemap

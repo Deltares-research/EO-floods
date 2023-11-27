@@ -198,7 +198,7 @@ class HydraFloods(Provider):
             "bands": ["water"],
             "min": 0,
             "max": 1,
-            "palette": ["#C0C0C0", "#000080"],
+            "palette": ["#000080", "#C0C0C0"],
         }
         map = geemap.Map(center=self.centroid, zoom=zoom)
         for ds_name in self.flood_extents:
