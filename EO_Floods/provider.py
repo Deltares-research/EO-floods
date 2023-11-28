@@ -84,7 +84,7 @@ class HydraFloodsDataset:
         self.obj: hf.Dataset = HF_datasets[dataset.name](
             region=region, start_time=start_date, end_time=end_date
         )
-        log.info(f"Initialized hydrafloods dataset for {self.name}")
+        log.debug(f"Initialized hydrafloods dataset for {self.name}")
 
 
 class HydraFloods(Provider):
