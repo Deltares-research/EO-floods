@@ -80,5 +80,6 @@ def test_FloodMap_workflow():
         datasets="Landsat 8", start_date="2023-04-03", end_date="2023-04-04"
     )
     assert isinstance(data_selection, list)
-    flood_extents = floodmap.generate_flood_extents()
-    assert isinstance(flood_extents["Landsat 8"], hf.Dataset)
+    floodmap.generate_flood_extents()
+    assert hasattr(floodmap, "flood_extents")
+    assert isinstance(floodmap.flood_extents["Landsat 8"], hf.Dataset)
