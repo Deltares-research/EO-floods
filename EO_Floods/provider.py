@@ -4,6 +4,7 @@ from typing import List
 from enum import Enum
 import warnings
 import datetime
+import logging
 
 import hydrafloods as hf
 import geemap.foliumap as geemap
@@ -12,6 +13,8 @@ import ee
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
 from EO_Floods.config import settings
+
+log = logging.getLogger(__name__)
 
 
 class providers(Enum):

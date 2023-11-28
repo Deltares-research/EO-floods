@@ -1,7 +1,13 @@
 from typing import List
+import logging
+import sys
 
 from EO_Floods.dataset import DATASETS, Dataset
 from EO_Floods.provider import providers, HydraFloods, GFM
+
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 class FloodMap:
@@ -28,7 +34,9 @@ class FloodMap:
         elif provider == "GFM":
             self.provider = GFM()
         else:
+            log.debug(f"Error occured with provider variable: {provider}")
             raise ValueError(f"Provider '{provider}' not recognized")
+        log.info("Flood map object initialized")
 
     @property
     def info(self):

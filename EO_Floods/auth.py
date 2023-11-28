@@ -1,5 +1,9 @@
 import os
+import logging
+
 import ee
+
+log = logging.getLogger(__name__)
 
 
 def ee_initialize(token_name="EARTHENGINE_TOKE"):

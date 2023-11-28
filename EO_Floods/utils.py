@@ -1,8 +1,11 @@
 from typing import List, Tuple
+import logging
 
 import ee
 import datetime
 from dateutil import parser
+
+log = logging.getLogger(__name__)
 
 
 def coords_to_ee_geom(coords: list) -> ee.geometry.Geometry:
