@@ -119,7 +119,7 @@ class HydraFloods(Provider):
             )
         return dataset_info
 
-    def preview_data(self, zoom=7) -> geemap.Map:
+    def preview_data(self, zoom=8) -> geemap.Map:
         Map = geemap.Map(center=self.centroid, zoom=zoom)
         for dataset in self.datasets:
             dates = dataset.obj.dates
@@ -141,7 +141,17 @@ class HydraFloods(Provider):
         if isinstance(datasets, str):
             datasets = [datasets]
 
+        if start_date and (start_date == end_date):
+            log.warning("End date should be exclusive, setting end date to a day later")
+            end_date = datetime.datetime.strftime(
+                date_parser(end_date) + datetime.timedelta(days=1), "%Y-%m-%d"
+            )
+
         if not all([start_date, end_date]):
+            log.info(
+                "No start date or end date were given, defaulting to "
+                f"original start and end date: {self.start_date}, {self.end_date}"
+            )
             start_date = self.start_date
             end_date = self.end_date
 
@@ -159,6 +169,7 @@ class HydraFloods(Provider):
     def generate_flood_extents(self, clip_ocean: bool = True) -> None:
         flood_extents = {}
         for dataset in self.datasets:
+            log.info(f"Generating flood extents for {dataset.name} dataset")
             if dataset.obj.n_images < 1:
                 warnings.warn(
                     f"{dataset.name} has no images for date range {self.start_date} - {self.end_date}.",
@@ -166,6 +177,7 @@ class HydraFloods(Provider):
                 )
                 continue
             if clip_ocean:
+                log.info("Clipping image to country boundaries")
                 country_boundary = (
                     settings.country_boundaries_dataset.filterBounds(self.geometry)
                     .first()
@@ -176,11 +188,13 @@ class HydraFloods(Provider):
                 )
                 dataset.obj = hf.Dataset.from_imgcollection(clipped_data)
             if dataset.imagery_type == ImageryType.OPTICAL:
+                log.debug(f"Calculating MNDWI for {dataset.name}")
                 dataset.obj.apply_func(
                     hf.add_indices,
                     indices=[dataset.algorithm_params["edge_otsu"]["band"]],
                     inplace=True,
                 )
+            log.info("Applying edge-otsu thresholding")
             flood_extent = dataset.obj.apply_func(
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
             )
@@ -191,7 +205,7 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, zoom=7, **kwargs):
+    def plot_flood_extents(self, zoom=8, **kwargs):
         if not hasattr(self, "flood_extents"):
             raise RuntimeError(
                 "generate_flood_extents() needs to be called before calling this method"
