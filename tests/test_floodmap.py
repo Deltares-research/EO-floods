@@ -44,6 +44,7 @@ def test_FloodMap_info():
         geometry=[4.221067, 51.949474, 4.471006, 52.073727],
         datasets="Sentinel-2",
         provider="hydrafloods",
+        use_qa=False,
     )
 
     floodmap_info = floodmap.info
@@ -81,5 +82,5 @@ def test_FloodMap_workflow():
     )
     assert isinstance(data_selection, list)
     floodmap.generate_flood_extents()
-    assert hasattr(floodmap, "flood_extents")
-    assert isinstance(floodmap.flood_extents["Landsat 8"], hf.Dataset)
+    assert hasattr(floodmap.provider, "flood_extents")
+    assert isinstance(floodmap.provider.flood_extents["Landsat 8"], hf.Dataset)

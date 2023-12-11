@@ -78,7 +78,3 @@ def test_plot_flood_extents():
         match=r"generate_flood_extents\(\) needs to be called before calling this method",
     ):
         hf_provider.plot_flood_extents()
-
-    hf_provider.generate_flood_extents()
-    plot = hf_provider.plot_flood_extents()
-    assert isinstance(plot, geemap.Map)

@@ -18,6 +18,7 @@ class FloodMap:
         geometry: List[float],
         datasets: List[str] | str = None,
         provider: providers = providers.HYDRAFLOODS,
+        **kwargs,
     ) -> None:
         self.start_date = start_date
         self.end_date = end_date
@@ -30,6 +31,7 @@ class FloodMap:
                 start_date=self.start_date,
                 end_date=self.end_date,
                 geometry=self.geometry,
+                **kwargs,
             )
         elif provider == "GFM":
             self.provider = GFM()

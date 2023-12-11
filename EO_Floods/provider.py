@@ -65,6 +65,7 @@ class HydraFloodsDataset:
         region: ee.geometry.Geometry,
         start_date: str,
         end_date: str,
+        **kwargs,
     ):
         HF_datasets = {
             "Sentinel-1": hf.Sentinel1,
@@ -82,7 +83,7 @@ class HydraFloodsDataset:
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.obj: hf.Dataset = HF_datasets[dataset.name](
-            region=region, start_time=start_date, end_time=end_date
+            region=region, start_time=start_date, end_time=end_date, **kwargs
         )
         log.debug(f"Initialized hydrafloods dataset for {self.name}")
 
@@ -95,6 +96,7 @@ class HydraFloods(Provider):
         start_date: str,
         end_date: str,
         geometry: List[float],
+        **kwargs,
     ) -> None:
         self.centroid = get_centroid(geometry)
         self.geometry = coords_to_ee_geom(geometry)
@@ -102,7 +104,7 @@ class HydraFloods(Provider):
         self.end_date = end_date
         self.initial_datasets = datasets
         self.datasets = [
-            HydraFloodsDataset(dataset, self.geometry, start_date, end_date)
+            HydraFloodsDataset(dataset, self.geometry, start_date, end_date, **kwargs)
             for dataset in datasets
         ]
 
