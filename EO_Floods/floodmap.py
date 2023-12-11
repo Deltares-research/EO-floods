@@ -65,6 +65,9 @@ class FloodMap:
     def plot_flood_extents(self, **kwargs):
         return self.provider.plot_flood_extents(**kwargs)
 
+    def export_data(self, **kwargs):
+        return self.provider.export_data(**kwargs)
+
 
 @staticmethod
 def _instantiate_datasets(datasets: List[str] | str) -> List[Dataset]:

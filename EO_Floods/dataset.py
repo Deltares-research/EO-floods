@@ -9,6 +9,7 @@ class ImageryType(Enum):
 
 class Dataset(BaseModel):
     name: str
+    short_name: str
     default_flood_extent_algorithm: str
     imagery_type: ImageryType
     algorithm_params: dict
@@ -17,6 +18,7 @@ class Dataset(BaseModel):
 
 class Sentinel1(Dataset):
     name: str = "Sentinel-1"
+    short_name: str = "S1"
     imagery_type: ImageryType = ImageryType.SAR
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "VV"}}
@@ -25,6 +27,7 @@ class Sentinel1(Dataset):
 
 class Sentinel2(Dataset):
     name: str = "Sentinel-2"
+    short_name: str = "S2"
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
@@ -33,6 +36,7 @@ class Sentinel2(Dataset):
 
 class Landsat7(Dataset):
     name: str = "Landsat 7"
+    short_name: str = "L7"
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
@@ -41,6 +45,7 @@ class Landsat7(Dataset):
 
 class Landsat8(Dataset):
     name: str = "Landsat 8"
+    short_name: str = "L8"
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
@@ -49,6 +54,7 @@ class Landsat8(Dataset):
 
 class VIIRS(Dataset):
     name: str = "VIIRS"
+    short_name: str = "VIIRS"
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
@@ -57,6 +63,7 @@ class VIIRS(Dataset):
 
 class MODIS(Dataset):
     name: str = "MODIS"
+    short_name: str = "MODIS"
     imagery_type: ImageryType = ImageryType.OPTICAL
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}

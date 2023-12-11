@@ -7,6 +7,7 @@ import datetime
 import logging
 
 import hydrafloods as hf
+from hydrafloods.geeutils import batch_export
 import geemap.foliumap as geemap
 import ee
 
@@ -57,6 +58,10 @@ class Provider(ABC):
     def plot_flood_depths(self):
         pass
 
+    @abc.abstractmethod
+    def export_data(self):
+        pass
+
 
 class HydraFloodsDataset:
     def __init__(
@@ -76,6 +81,7 @@ class HydraFloodsDataset:
             "MODIS": hf.Modis,
         }
         self.name: str = dataset.name
+        self.short_name: str = dataset.short_name
         self.imagery_type: ImageryType = dataset.imagery_type
         self.default_flood_extent_algorithm: (
             str
@@ -197,6 +203,9 @@ class HydraFloods(Provider):
                     indices=[dataset.algorithm_params["edge_otsu"]["band"]],
                     inplace=True,
                 )
+                dataset.obj.apply_func(
+                    lambda x: x.cast({"mndwi": "double"}), inplace=True
+                )
             log.info("Applying edge-otsu thresholding")
             flood_extent = dataset.obj.apply_func(
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
@@ -208,7 +217,7 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, zoom=8, **kwargs):
+    def plot_flood_extents(self, zoom: int = 8, **kwargs):
         if not hasattr(self, "flood_extents"):
             raise RuntimeError(
                 "generate_flood_extents() needs to be called before calling this method"
@@ -239,6 +248,56 @@ class HydraFloods(Provider):
 
     def plot_flood_depths(self):
         pass
+
+    def export_data(
+        self,
+        export_type: str = "toDrive",
+        include_base_data: bool = False,
+        folder: str = None,
+        ee_asset_path: str = None,
+        **kwargs,
+    ):
+        if export_type == "toDrive":
+            folder = "EO_Floods"
+
+        if hasattr(self, "flood_extents"):
+            for ds in self.flood_extents.keys():
+                log.info(
+                    f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
+                )
+                batch_export(
+                    collection=self.flood_extents[ds].collection,
+                    collection_asset=ee_asset_path,
+                    export_type=export_type,
+                    folder=folder,
+                    region=self.flood_extents[ds].collection.geometry(),
+                    suffix=f"{ds.replace(' ', '_')}_flood_extent",
+                    scale=self.flood_extents[ds]
+                    .collection.first()
+                    .select("water")
+                    .projection()
+                    .nominalScale(),
+                    **kwargs,
+                )
+        if include_base_data:
+            for dataset in self.datasets:
+                log.info(
+                    f"Exporting {dataset.name} {export_type[:2]+' '+export_type[2:]}"
+                )
+                batch_export(
+                    collection=dataset.obj.collection,
+                    collection_asset=ee_asset_path
+                    + f"{dataset.short_name}_EO_Floodmap",
+                    export_type=export_type,
+                    folder=folder,
+                    region=dataset.obj.collection.geometry(),
+                    suffix=dataset.short_name,
+                    scale=dataset.obj.collection.first()
+                    .select(1)
+                    .projection()
+                    .nominalScale(),
+                    **kwargs,
+                )
 
 
 class GFM(Provider):
