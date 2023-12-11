@@ -229,7 +229,7 @@ class HydraFloods(Provider):
             "max": 1,
             "palette": ["#000080", "#C0C0C0"],
         }
-        map = geemap.Map(center=self.centroid, zoom=zoom)
+        map = self.preview_data()
         for ds_name in self.flood_extents:
             for date in self.flood_extents[ds_name].dates:
                 img = (
@@ -242,7 +242,9 @@ class HydraFloods(Provider):
                 ).mode()
 
                 map.add_layer(
-                    img, vis_params=flood_extent_vis_params, name=f"{ds_name} {date}"
+                    img,
+                    vis_params=flood_extent_vis_params,
+                    name=f"{ds_name} {date} flood extent",
                 )
         return map
 
