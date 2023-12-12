@@ -26,7 +26,6 @@ class providers(Enum):
 class Provider(ABC):
     def __init__(
         self,
-        credentials,
         datasets: List[Dataset],
         start_date: str,
         end_date: str,
