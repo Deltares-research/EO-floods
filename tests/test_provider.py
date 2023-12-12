@@ -1,8 +1,8 @@
+from mock import patch
 import hydrafloods as hf
 import ee
 import geemap.foliumap as geemap
 import pytest
-
 from EO_Floods.provider import HydraFloodsDataset
 from EO_Floods.utils import date_parser
 from tests.conftest import get_hydrafloods_instance
@@ -78,3 +78,21 @@ def test_plot_flood_extents():
         match=r"generate_flood_extents\(\) needs to be called before calling this method",
     ):
         hf_provider.plot_flood_extents()
+
+
+def test_export_data():
+    hf_provider = get_hydrafloods_instance(["Landsat 8"])
+    with pytest.raises(
+        RuntimeError,
+        match=r"First call generate_flood_extents\(\) before calling export_data\(\)",
+    ):
+        hf_provider.export_data()
+
+    @patch("EO_Floods.provider.batch_export")
+    def test_batch_export_call(mock_batch_export):
+        hf_provider.generate_flood_extents()
+        mock_batch_export.return_value = ""
+        hf_provider.export_data(include_base_data=True, scale=1000)
+        assert mock_batch_export.call_count == 2
+
+    test_batch_export_call()
