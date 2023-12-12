@@ -72,6 +72,20 @@ class HydraFloodsDataset:
         end_date: str,
         **kwargs,
     ):
+        """Class for initializing Hydrafloods datasets.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            EO_Floods.Dataset object containing information on the dataset and configuration
+            for processing.
+        region : ee.geometry.Geometry
+            Earth Engine geometry that represents the area of interest.
+        start_date : str
+            Start date of the time window of interest (YYY-mm-dd).
+        end_date : str
+            End date of the time window of interest (YYY-mm-dd).
+        """
         HF_datasets = {
             "Sentinel-1": hf.Sentinel1,
             "Sentinel-2": hf.Sentinel2,
@@ -97,13 +111,27 @@ class HydraFloodsDataset:
 class HydraFloods(Provider):
     def __init__(
         self,
-        credentials: dict,
         datasets: List[Dataset],
         start_date: str,
         end_date: str,
         geometry: List[float],
         **kwargs,
     ) -> None:
+        """Provider class for Hydrafloods
+
+        Parameters
+        ----------
+        datasets : List[Dataset]
+            List containing EO_Floods.Dataset objects with dataset information and
+            configuration for processing.
+        start_date : str
+            Start date of the time window of interest (YYY-mm-dd).
+        end_date : str
+            End date of the time window of interest (YYY-mm-dd).
+        geometry : List[float]
+            List of coordinates of a bounding box in the [xmin, ymin, xmax, ymax] format.
+            Coordinates should be in wgs84 (epsg:4326).
+        """
         self.centroid = get_centroid(geometry)
         self.geometry = coords_to_ee_geom(geometry)
         self.start_date = start_date
@@ -116,6 +144,14 @@ class HydraFloods(Provider):
 
     @property
     def info(self) -> List[dict]:
+        """Information on the given datasets for the given temporal and spatial resolution.
+
+        Returns
+        -------
+        List[dict]
+            List of dictionaries containing information on the datasets.
+
+        """
         dataset_info = []
         for dataset in self.datasets:
             dataset_info.append(
@@ -129,6 +165,18 @@ class HydraFloods(Provider):
         return dataset_info
 
     def preview_data(self, zoom=8) -> geemap.Map:
+        """Previews the data by plotting it on a geemap.Map object per date of the image.
+
+        Parameters
+        ----------
+        zoom : int, optional
+            zoom level of map window, by default 8
+
+        Returns
+        -------
+        geemap.Map
+            Map object containing the mapped datasets per date
+        """
         Map = geemap.Map(center=self.centroid, zoom=zoom)
         for dataset in self.datasets:
             dates = dataset.obj.dates
@@ -147,6 +195,23 @@ class HydraFloods(Provider):
         start_date: str = None,
         end_date: str = None,
     ) -> List[dict]:
+        """Select data that is suitable for generating flood extents. Selection can
+        be made based on the dataset name and time range.
+
+        Parameters
+        ----------
+        datasets : List[str] | str, optional
+            name(s) of dataset(s) to select data for, by default None.
+        start_date : str, optional
+            Start date of time window of interest, by default None
+        end_date : str, optional
+            End date of time window interest, end date is exclusive, by default None,
+
+        Returns
+        -------
+        List[dict]
+            Returning Hydrafloods.info on the selected data
+        """
         if isinstance(datasets, str):
             datasets = [datasets]
 
@@ -176,6 +241,17 @@ class HydraFloods(Provider):
         return self.info
 
     def generate_flood_extents(self, clip_ocean: bool = True) -> None:
+        """Generates flood extents on the selected datasets and for the given temporal
+        and spatial resolution.
+
+        Parameters
+        ----------
+        clip_ocean : bool, optional
+            Option for clipping ocean pixels from the images. Ocean pixels can negatively
+            influence the edge otsu algorithm. The clipping is done by using country
+            borders, so be aware when your region of interest is across country
+            boundaries. By default True.
+        """
         flood_extents = {}
         for dataset in self.datasets:
             log.info(f"Generating flood extents for {dataset.name} dataset")
@@ -217,7 +293,21 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, zoom: int = 8):
+    def plot_flood_extents(self, zoom: int = 8) -> geemap.Map:
+        """Plots the flood extents on a geemap.Map object.
+
+        Parameters
+        ----------
+        zoom : int, optional
+            Zoom level of the map window, by default 8
+
+        Returns
+        -------
+        geemap.Map
+            Map containing the flood extents and the data the flood extents are
+            based on.
+
+        """
         if not hasattr(self, "flood_extents"):
             raise RuntimeError(
                 "generate_flood_extents() needs to be called before calling this method"
@@ -257,9 +347,27 @@ class HydraFloods(Provider):
         include_base_data: bool = False,
         folder: str = None,
         ee_asset_path: str = "",
-        scale=None,
+        scale: int | float = None,
         **kwargs,
     ):
+        """Exports the data generated in the floodmapping workflow to a Google Drive
+        or as Earth Engine asset.
+
+        Parameters
+        ----------
+        export_type : str, optional
+            Two options for exporting data: "toAsset", "toDrive", by default "toDrive"
+        include_base_data : bool, optional
+            The base data can be exported as well. Be aware that this data is often
+            of a large size and takes a long time to export, by default False.
+        folder : str, optional
+            Name of folder on Google Drive to export the data to, by default None
+        ee_asset_path : str, optional
+            Earth Engine path to export the data to, by default ""
+        scale : int or float, optional
+            Scale (resolution) in meters at which the image is exported, by default
+            the scale of the flood extent image.
+        """
         if export_type == "toDrive":
             folder = "EO_Floods"
 
