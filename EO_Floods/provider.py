@@ -217,7 +217,7 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, zoom: int = 8, **kwargs):
+    def plot_flood_extents(self, zoom: int = 8):
         if not hasattr(self, "flood_extents"):
             raise RuntimeError(
                 "generate_flood_extents() needs to be called before calling this method"
@@ -256,7 +256,8 @@ class HydraFloods(Provider):
         export_type: str = "toDrive",
         include_base_data: bool = False,
         folder: str = None,
-        ee_asset_path: str = None,
+        ee_asset_path: str = "",
+        scale=None,
         **kwargs,
     ):
         if export_type == "toDrive":
@@ -267,20 +268,30 @@ class HydraFloods(Provider):
                 log.info(
                     f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
                 )
+                collection = self.flood_extents[ds].collection.map(
+                    lambda x: x.eq(0).copyProperties(x, ["system:time_start"])
+                )
+                if not scale:
+                    scale = (
+                        self.flood_extents[ds]
+                        .collection.first()
+                        .select("water")
+                        .projection()
+                        .nominalScale(),
+                    )
                 batch_export(
-                    collection=self.flood_extents[ds].collection,
+                    collection=collection,
                     collection_asset=ee_asset_path,
                     export_type=export_type,
                     folder=folder,
-                    region=self.flood_extents[ds].collection.geometry(),
                     suffix=f"{ds.replace(' ', '_')}_flood_extent",
-                    scale=self.flood_extents[ds]
-                    .collection.first()
-                    .select("water")
-                    .projection()
-                    .nominalScale(),
+                    scale=scale,
                     **kwargs,
                 )
+        else:
+            raise RuntimeError(
+                "First call generate_flood_extents() before calling export_data()"
+            )
         if include_base_data:
             for dataset in self.datasets:
                 log.info(
