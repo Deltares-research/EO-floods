@@ -91,8 +91,9 @@ def test_export_data():
     @patch("EO_Floods.provider.batch_export")
     def test_batch_export_call(mock_batch_export):
         hf_provider.generate_flood_extents()
-        mock_batch_export.return_value = ""
+        hf_provider.export_data()
+        assert mock_batch_export.call_count == 1
         hf_provider.export_data(include_base_data=True, scale=1000)
-        assert mock_batch_export.call_count == 2
+        assert mock_batch_export.call_count == 3
 
     test_batch_export_call()
