@@ -106,7 +106,10 @@ class HydraFloodsDataset:
         )
         log.debug(f"Initialized hydrafloods dataset for {self.name}")
 
-        self.obj.collection = _mosaic_same_date_images(self.obj.collection)
+        col_size = self.obj.n_images
+        self.obj.collection = _mosaic_same_date_images(
+            self.obj.collection, size=col_size
+        )
 
 
 class HydraFloods(Provider):
@@ -182,7 +185,8 @@ class HydraFloods(Provider):
         for dataset in self.datasets:
             dates = dataset.obj.dates
             for date in dates:
-                img = dataset.obj.collection.filter(ee.Filter.date(date_parser(date)))
+                d = ee.Date(date_parser(date))
+                img = dataset.obj.collection.filterDate(d, d.advance(1, "day"))
                 Map.add_layer(
                     img,
                     vis_params=dataset.visual_params,
@@ -323,15 +327,12 @@ class HydraFloods(Provider):
         map = self.preview_data()
         for ds_name in self.flood_extents:
             for date in self.flood_extents[ds_name].dates:
+                d = ee.Date(date_parser(date))
                 img = (
-                    self.flood_extents[ds_name].collection.filter(
-                        ee.Filter.date(
-                            date_parser(date),
-                            date_parser(date) + datetime.timedelta(days=1),
-                        ),
-                    )
-                ).mode()
-
+                    self.flood_extents[ds_name]
+                    .collection.filterDate(d, d.advance(1, "day"))
+                    .mode()
+                )
                 map.add_layer(
                     img,
                     vis_params=flood_extent_vis_params,
@@ -422,8 +423,8 @@ class HydraFloods(Provider):
                 )
 
 
-def _mosaic_same_date_images(imgcol: ee.ImageCollection):
-    imlist = imgcol.toList(imgcol.size())
+def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
+    imlist = imgcol.toList(size)
 
     unique_dates = imlist.map(
         lambda x: ee.Image(x).date().format("YYYY-MM-dd")
