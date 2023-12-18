@@ -106,6 +106,8 @@ class HydraFloodsDataset:
         )
         log.debug(f"Initialized hydrafloods dataset for {self.name}")
 
+        self.obj.collection = _mosaic_same_date_images(self.obj.collection)
+
 
 class HydraFloods(Provider):
     def __init__(
@@ -418,6 +420,23 @@ class HydraFloods(Provider):
                     .nominalScale(),
                     **kwargs,
                 )
+
+
+def _mosaic_same_date_images(imgcol: ee.ImageCollection):
+    imlist = imgcol.toList(imgcol.size())
+
+    unique_dates = imlist.map(
+        lambda x: ee.Image(x).date().format("YYYY-MM-dd")
+    ).distinct()
+
+    def _mosaic_dates(d):
+        d = ee.Date(d)
+        img_props = imgcol.filterDate(d, d.advance(1, "day")).first()
+        img = imgcol.filterDate(d, d.advance(1, "day")).mosaic()
+        img = img.copyProperties(img_props, ["system:time_start", "system:id"])
+        return img
+
+    return ee.ImageCollection(unique_dates.map(_mosaic_dates))
 
 
 class GFM(Provider):

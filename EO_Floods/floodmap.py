@@ -47,7 +47,6 @@ class FloodMap:
         self.datasets = _instantiate_datasets(datasets)
         if provider == "hydrafloods":
             self.provider = HydraFloods(
-                credentials={},
                 datasets=self.datasets,
                 start_date=self.start_date,
                 end_date=self.end_date,
