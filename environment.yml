@@ -10,6 +10,7 @@ dependencies:
   - pip:
     - hydrafloods
     - geemap
+    - pydantic_settings
 
 
 
