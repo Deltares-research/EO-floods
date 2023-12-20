@@ -54,7 +54,7 @@ jobs:
           EARTHENGINE_TOKEN: ${{ secrets.EARTHENGINE_TOKEN }}
       - name: Test
         run: |
-          mamba run -n EO-Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
+          mamba run -n EO-Floods python -m pytest --verbose 
 
 
 
