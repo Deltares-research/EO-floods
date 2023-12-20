@@ -10,7 +10,9 @@ dependencies:
   - pip:
     - hydrafloods
     - geemap
+    - pytest
     - pydantic_settings
+    - mock
 
 
 
