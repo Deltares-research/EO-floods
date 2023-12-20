@@ -1,3 +1,1 @@
-import ee
 
-ee.Initialize()
