@@ -3,8 +3,10 @@ import ee
 
 from EO_Floods.dataset import DATASETS
 from EO_Floods.provider import HydraFloods
+from EO_Floods.auth import ee_initialize
 
-ee.Initialize()
+ee_initialize()
+
 
 
 def get_hydrafloods_instance(dataset_list: list) -> HydraFloods:
