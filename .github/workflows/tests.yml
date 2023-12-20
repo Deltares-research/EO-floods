@@ -48,6 +48,10 @@ jobs:
         run: |
           mamba env create -f environment.yml
           mamba run -n EO-Floods pip install -e .
+      - name: LOAD EE CREDENTIALS
+        run: python ./.github/ee_token.py
+        env:
+          EARTHENGINE_TOKEN: ${{ secrets.EARTHENGINE_TOKEN }}
       - name: Test
         run: |
           mamba run -n EO-Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
