@@ -47,10 +47,10 @@ jobs:
       - name: Setup env
         run: |
           mamba env create -f environment.yml
-          mamba run -n EO_Floods pip install -e .
+          mamba run -n EO-Floods pip install -e .
       - name: Test
         run: |
-          mamba run -n EO_Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
+          mamba run -n EO-Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
 
 
 
