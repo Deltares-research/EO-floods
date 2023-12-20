@@ -294,6 +294,11 @@ class HydraFloods(Provider):
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
             )
 
+            # Invert values of flood extent so that water=1, land=0
+            flood_extent = flood_extent.apply_func(
+                lambda x: x.eq(0).copyProperties(x, ["system:time_start"])
+            )
+
             flood_extents[dataset.name] = flood_extent
         self.flood_extents = flood_extents
 
@@ -324,7 +329,7 @@ class HydraFloods(Provider):
             "bands": ["water"],
             "min": 0,
             "max": 1,
-            "palette": ["#000080", "#C0C0C0"],
+            "palette": ["#C0C0C0", "#000080"],
         }
         map = self.preview_data()
         for ds_name in self.flood_extents:
@@ -340,6 +345,12 @@ class HydraFloods(Provider):
                     vis_params=flood_extent_vis_params,
                     name=f"{ds_name} {date} flood extent",
                 )
+            max_extent_img = self.flood_extents[ds_name].collection.max()
+            map.add_layer(
+                max_extent_img,
+                vis_params=flood_extent_vis_params,
+                name=f"{ds_name} max flood extent",
+            )
         return map
 
     def plot_flood_depths(self):
@@ -380,9 +391,7 @@ class HydraFloods(Provider):
                 log.info(
                     f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
                 )
-                collection = self.flood_extents[ds].collection.map(
-                    lambda x: x.eq(0).copyProperties(x, ["system:time_start"])
-                )
+
                 if not scale:
                     scale = (
                         self.flood_extents[ds]
@@ -392,7 +401,7 @@ class HydraFloods(Provider):
                         .nominalScale(),
                     )
                 batch_export(
-                    collection=collection,
+                    collection=self.flood_extents[ds].collection,
                     collection_asset=ee_asset_path,
                     export_type=export_type,
                     folder=folder,
