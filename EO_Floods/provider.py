@@ -13,7 +13,7 @@ import ee
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
-from EO_Floods.config import settings
+from EO_Floods.config import Settings
 
 log = logging.getLogger(__name__)
 
@@ -145,6 +145,7 @@ class HydraFloods(Provider):
             HydraFloodsDataset(dataset, self.geometry, start_date, end_date, **kwargs)
             for dataset in datasets
         ]
+        self.settings = Settings()
 
     @property
     def info(self) -> List[dict]:
@@ -269,7 +270,7 @@ class HydraFloods(Provider):
             if clip_ocean:
                 log.info("Clipping image to country boundaries")
                 country_boundary = (
-                    settings.country_boundaries_dataset.filterBounds(self.geometry)
+                    self.settings.country_boundaries_dataset.filterBounds(self.geometry)
                     .first()
                     .geometry()
                 )
