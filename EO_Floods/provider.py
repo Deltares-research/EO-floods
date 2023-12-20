@@ -106,10 +106,10 @@ class HydraFloodsDataset:
         )
         log.debug(f"Initialized hydrafloods dataset for {self.name}")
 
-        col_size = self.obj.n_images
-        self.obj.collection = _mosaic_same_date_images(
-            self.obj.collection, size=col_size
-        )
+        # col_size = self.obj.n_images
+        # self.obj.collection = _mosaic_same_date_images(
+        #     self.obj.collection, size=col_size
+        # )
 
 
 class HydraFloods(Provider):
