@@ -12,7 +12,7 @@ dependecies = [
     "hydrafloods",
     "geemap",
     "pydantic",
-    "pydantic_settings
+    "pydantic_settings",
     "jupyter",
 ]
 

@@ -22,3 +22,4 @@ def ee_initialize(token_name="EARTHENGINE_TOKE"):
         except Exception:
             ee.Authenticate()
             ee.Initialize()
+    ee.Initialize()
