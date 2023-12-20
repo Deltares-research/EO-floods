@@ -50,7 +50,7 @@ jobs:
           mamba run -n EO_Floods pip install -e .
       - name: Test
         run: |
-        mamba run -n EO_Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
+          mamba run -n EO_Floods python -m pytest --verbose --cov=eo_floods --cov-report xml
 
 
 
