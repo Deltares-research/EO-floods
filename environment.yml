@@ -12,6 +12,7 @@ dependencies:
     - geemap
     - pytest
     - pydantic_settings
+    - mock
 
 
 
