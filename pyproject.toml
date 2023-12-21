@@ -5,29 +5,20 @@ build-backend = "flit_core.buildapi"
 [project]
 name = "EO_Floods"
 authors = [
-    {name = "Tjalling de Jong", email = "tjalling.dejong@deltares.nl"},
+    {name = "Tjalling de jong", email = "tjalling.dejong@deltares.nl"},
     {name = "Arjen Haag", email = "arjen.haag@deltares.nl"}
-    ]
+]
+readme = "README.md"
 dependecies = [
     "hydrafloods",
     "geemap",
-    "pydantic",
-    "pydantic_settings",
     "jupyter",
+    "pytest",
+    "pydantic",
 ]
-
-requires-python = ">=3.10"
-readme = "README.md"
 license = {file = "LICENSE"}
-classifiers = [
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GPL-3 License",
-    "Programming Language :: Python :: 3"
-    ]
+classifiers = ["License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"]
 dynamic = ["version", "description"]
 
-
-
 [project.urls]
-Home = "https://github.com/Deltares/EO_Floods"
+Home = "https://github.com/Deltares-research/EO-floods"
