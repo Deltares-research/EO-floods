@@ -4,7 +4,6 @@ channels:
   - defaults
 dependencies:
   - pip
-  - pytest
   - pydantic
   - jupyter
   - pip:
