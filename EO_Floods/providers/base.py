@@ -17,7 +17,6 @@ class Providers(Enum):
 class ProviderBase(ABC):
     def __init__(
         self,
-        datasets: List[Dataset],
         start_date: str,
         end_date: str,
         geometry: list,

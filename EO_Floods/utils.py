@@ -5,6 +5,7 @@ import ee
 import datetime
 from dateutil import parser
 
+
 log = logging.getLogger(__name__)
 
 
@@ -47,6 +48,36 @@ def date_parser(date_string: str) -> datetime.datetime:
         raise ValueError("Invalid date string format")
 
 
-def get_centroid(geometry: List[float]) -> Tuple[float]:
+def get_centroid(geometry: List[float]) -> Tuple[float, float]:
     x1, y1, x2, y2 = geometry
     return ((y1 + y2) / 2, (x1 + x2) / 2)
+
+
+def coords_to_geojson(coords: List[float]) -> dict:
+    """
+    Converts a list of coordinates to a GeoJSON dictionary.
+
+    Args:
+        coords_list (list): List of coordinates in the format [x_min, y_min, x_max, y_max].
+
+    Returns:
+        dict: GeoJSON dictionary representing the bounding box.
+    """
+    x_min, y_min, x_max, y_max = coords
+
+    geojson_dict = (
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [x_min, y_min],
+                    [x_max, y_min],
+                    [x_max, y_max],
+                    [x_min, y_max],
+                    [x_min, y_min],
+                ]
+            ],
+        },
+    )
+
+    return geojson_dict[0]
