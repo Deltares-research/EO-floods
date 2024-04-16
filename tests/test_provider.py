@@ -78,6 +78,12 @@ def test_plot_flood_extents():
         match=r"generate_flood_extents\(\) needs to be called before calling this method",
     ):
         hf_provider.plot_flood_extents()
+    hf_provider.generate_flood_extents()
+    with pytest.raises(
+        TimeoutError,
+        match="Plotting floodmaps has timed out, increase the time out threshold or plot a smaller selection of your data",
+    ):
+        hf_provider.plot_flood_extents(timeout=1)
 
 
 def test_export_data():
