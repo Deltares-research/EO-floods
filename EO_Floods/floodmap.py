@@ -117,16 +117,19 @@ class FloodMap:
         raise NotImplementedError
         return self.provider.generate_flood_depths(**kwargs)
 
-    def plot_flood_extents(self, **kwargs) -> geemap.Map:
-        """Plots the generated flood extents on a map togather with the data the
+    def plot_flood_extents(self, timeout: int = 60, **kwargs) -> geemap.Map:
+        """Plots the generated flood extents on a map together with the data the
         flood extents are generated from.
+
+        timeout: int, optional
+            The time in seconds it takes to raise a timeout error
 
         Returns
         -------
         geemap.Map
 
         """
-        return self.provider.plot_flood_extents(**kwargs)
+        return self.provider.plot_flood_extents(timeout=timeout, **kwargs)
 
     def export_data(self, **kwargs):
         return self.provider.export_data(**kwargs)

@@ -10,6 +10,7 @@ import hydrafloods as hf
 from hydrafloods.geeutils import batch_export
 import geemap.foliumap as geemap
 import ee
+import multiprocessing.pool
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
@@ -33,7 +34,7 @@ class Provider(ABC):
     ) -> None:
         pass
 
-    @abc.abstractproperty
+    @property
     def info(self):
         pass
 
@@ -96,9 +97,9 @@ class HydraFloodsDataset:
         self.name: str = dataset.name
         self.short_name: str = dataset.short_name
         self.imagery_type: ImageryType = dataset.imagery_type
-        self.default_flood_extent_algorithm: (
-            str
-        ) = dataset.default_flood_extent_algorithm
+        self.default_flood_extent_algorithm: str = (
+            dataset.default_flood_extent_algorithm
+        )
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.obj: hf.Dataset = HF_datasets[dataset.name](
@@ -305,7 +306,7 @@ class HydraFloods(Provider):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, zoom: int = 8) -> geemap.Map:
+    def plot_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
         """Plots the flood extents on a geemap.Map object.
 
         Parameters
@@ -320,38 +321,51 @@ class HydraFloods(Provider):
             based on.
 
         """
-        if not hasattr(self, "flood_extents"):
-            raise RuntimeError(
-                "generate_flood_extents() needs to be called before calling this method"
-            )
 
-        flood_extent_vis_params = {
-            "bands": ["water"],
-            "min": 0,
-            "max": 1,
-            "palette": ["#C0C0C0", "#000080"],
-        }
-        map = self.preview_data()
-        for ds_name in self.flood_extents:
-            for date in self.flood_extents[ds_name].dates:
-                d = ee.Date(date_parser(date))
-                img = (
-                    self.flood_extents[ds_name]
-                    .collection.filterDate(d, d.advance(1, "day"))
-                    .mode()
+        def _plot_flood_extents(zoom: int):
+            if not hasattr(self, "flood_extents"):
+                raise RuntimeError(
+                    "generate_flood_extents() needs to be called before calling this method"
                 )
+
+            flood_extent_vis_params = {
+                "bands": ["water"],
+                "min": 0,
+                "max": 1,
+                "palette": ["#C0C0C0", "#000080"],
+            }
+            map = self.preview_data()
+            for ds_name in self.flood_extents:
+                for date in self.flood_extents[ds_name].dates:
+                    d = ee.Date(date_parser(date))
+                    img = (
+                        self.flood_extents[ds_name]
+                        .collection.filterDate(d, d.advance(1, "day"))
+                        .mode()
+                    )
+                    map.add_layer(
+                        img,
+                        vis_params=flood_extent_vis_params,
+                        name=f"{ds_name} {date} flood extent",
+                    )
+                max_extent_img = self.flood_extents[ds_name].collection.max()
                 map.add_layer(
-                    img,
+                    max_extent_img,
                     vis_params=flood_extent_vis_params,
-                    name=f"{ds_name} {date} flood extent",
+                    name=f"{ds_name} max flood extent",
                 )
-            max_extent_img = self.flood_extents[ds_name].collection.max()
-            map.add_layer(
-                max_extent_img,
-                vis_params=flood_extent_vis_params,
-                name=f"{ds_name} max flood extent",
+            return map
+
+        try:
+            with multiprocessing.pool.ThreadPool() as pool:
+                return_value = pool.apply_async(_plot_flood_extents, (zoom,)).get(
+                    timeout=timeout
+                )
+        except multiprocessing.TimeoutError:
+            raise TimeoutError(
+                "Plotting floodmaps has timed out, increase the time out threshold or plot a smaller selection of your data"
             )
-        return map
+        return return_value
 
     def plot_flood_depths(self):
         pass
