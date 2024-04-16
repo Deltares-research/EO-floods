@@ -5,7 +5,7 @@ import sys
 import geemap.foliumap as geemap
 
 from EO_Floods.dataset import DATASETS, Dataset
-from EO_Floods.provider import providers, HydraFloods, GFM
+from EO_Floods.providers import Providers, HydraFloods, GFM
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
