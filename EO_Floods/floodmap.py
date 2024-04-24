@@ -19,7 +19,7 @@ class FloodMap:
         end_date: str,
         geometry: List[float],
         datasets: List[str] | str = None,
-        provider: str = providers.HYDRAFLOODS.value,
+        provider: str = Providers.HYDRAFLOODS.value,
         **kwargs,
     ) -> None:
         """Flood map object for creating and exporting flood maps.
