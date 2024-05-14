@@ -1,7 +1,4 @@
-import abc
-from abc import ABC
-from typing import List
-from enum import Enum
+from typing import List, Optional
 import warnings
 import datetime
 import logging
@@ -14,106 +11,12 @@ import multiprocessing.pool
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
+from EO_Floods.providers import ProviderBase
+
+logger = logging.getLogger(__name__)
 
 
-log = logging.getLogger(__name__)
-
-
-class providers(Enum):
-    HYDRAFLOODS = "hydrafloods"
-    GFM = "GFM"
-
-
-class Provider(ABC):
-    def __init__(
-        self,
-        datasets: List[Dataset],
-        start_date: str,
-        end_date: str,
-        geometry: list,
-    ) -> None:
-        pass
-
-    @property
-    def info(self):
-        pass
-
-    @abc.abstractmethod
-    def preview_data(self):
-        pass
-
-    @abc.abstractmethod
-    def generate_flood_extents(self):
-        pass
-
-    @abc.abstractmethod
-    def generate_flood_depths(self):
-        pass
-
-    @abc.abstractmethod
-    def plot_flood_extents(self):
-        pass
-
-    @abc.abstractmethod
-    def plot_flood_depths(self):
-        pass
-
-    @abc.abstractmethod
-    def export_data(self):
-        pass
-
-
-class HydraFloodsDataset:
-    def __init__(
-        self,
-        dataset: Dataset,
-        region: ee.geometry.Geometry,
-        start_date: str,
-        end_date: str,
-        **kwargs,
-    ):
-        """Class for initializing Hydrafloods datasets.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            EO_Floods.Dataset object containing information on the dataset and configuration
-            for processing.
-        region : ee.geometry.Geometry
-            Earth Engine geometry that represents the area of interest.
-        start_date : str
-            Start date of the time window of interest (YYY-mm-dd).
-        end_date : str
-            End date of the time window of interest (YYY-mm-dd).
-        """
-        HF_datasets = {
-            "Sentinel-1": hf.Sentinel1,
-            "Sentinel-2": hf.Sentinel2,
-            "Landsat 7": hf.Landsat7,
-            "Landsat 8": hf.Landsat8,
-            "VIIRS": hf.Viirs,
-            "MODIS": hf.Modis,
-        }
-        self.name: str = dataset.name
-        self.short_name: str = dataset.short_name
-        self.imagery_type: ImageryType = dataset.imagery_type
-        self.default_flood_extent_algorithm: str = (
-            dataset.default_flood_extent_algorithm
-        )
-        self.algorithm_params: dict = dataset.algorithm_params
-        self.visual_params: dict = dataset.visual_params
-        self.obj: hf.Dataset = HF_datasets[dataset.name](
-            region=region, start_time=start_date, end_time=end_date, **kwargs
-        )
-        log.debug(f"Initialized hydrafloods dataset for {self.name}")
-
-        # col_size = self.obj.n_images
-        # self.obj.collection = _mosaic_same_date_images(
-        #     self.obj.collection, size=col_size
-        # )
-
-
-class HydraFloods(Provider):
+class HydraFloods(ProviderBase):
     def __init__(
         self,
         datasets: List[Dataset],
@@ -197,9 +100,9 @@ class HydraFloods(Provider):
 
     def select_data(
         self,
-        datasets: List[str] | str = None,
-        start_date: str = None,
-        end_date: str = None,
+        datasets: Optional[List[str] | str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> List[dict]:
         """Select data that is suitable for generating flood extents. Selection can
         be made based on the dataset name and time range.
@@ -222,13 +125,15 @@ class HydraFloods(Provider):
             datasets = [datasets]
 
         if start_date and (start_date == end_date):
-            log.warning("End date should be exclusive, setting end date to a day later")
+            logger.warning(
+                "End date should be exclusive, setting end date to a day later"
+            )
             end_date = datetime.datetime.strftime(
                 date_parser(end_date) + datetime.timedelta(days=1), "%Y-%m-%d"
             )
 
         if not all([start_date, end_date]):
-            log.info(
+            logger.info(
                 "No start date or end date were given, defaulting to "
                 f"original start and end date: {self.start_date}, {self.end_date}"
             )
@@ -260,7 +165,7 @@ class HydraFloods(Provider):
         """
         flood_extents = {}
         for dataset in self.datasets:
-            log.info(f"Generating flood extents for {dataset.name} dataset")
+            logger.info(f"Generating flood extents for {dataset.name} dataset")
             if dataset.obj.n_images < 1:
                 warnings.warn(
                     f"{dataset.name} has no images for date range {self.start_date} - {self.end_date}.",
@@ -268,7 +173,7 @@ class HydraFloods(Provider):
                 )
                 continue
             if clip_ocean:
-                log.info("Clipping image to country boundaries")
+                logger.info("Clipping image to country boundaries")
                 country_boundary = (
                     ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0")
                     .filterBounds(self.geometry)
@@ -281,7 +186,7 @@ class HydraFloods(Provider):
                 )
                 dataset.obj = hf.Dataset.from_imgcollection(clipped_data)
             if dataset.imagery_type == ImageryType.OPTICAL:
-                log.debug(f"Calculating MNDWI for {dataset.name}")
+                logger.debug(f"Calculating MNDWI for {dataset.name}")
                 dataset.obj.apply_func(
                     hf.add_indices,
                     indices=[dataset.algorithm_params["edge_otsu"]["band"]],
@@ -290,7 +195,7 @@ class HydraFloods(Provider):
                 dataset.obj.apply_func(
                     lambda x: x.cast({"mndwi": "double"}), inplace=True
                 )
-            log.info("Applying edge-otsu thresholding")
+            logger.info("Applying edge-otsu thresholding")
             flood_extent = dataset.obj.apply_func(
                 hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
             )
@@ -402,7 +307,7 @@ class HydraFloods(Provider):
 
         if hasattr(self, "flood_extents"):
             for ds in self.flood_extents.keys():
-                log.info(
+                logger.info(
                     f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
                 )
 
@@ -429,7 +334,7 @@ class HydraFloods(Provider):
             )
         if include_base_data:
             for dataset in self.datasets:
-                log.info(
+                logger.info(
                     f"Exporting {dataset.name} {export_type[:2]+' '+export_type[2:]}"
                 )
                 batch_export(
@@ -448,6 +353,56 @@ class HydraFloods(Provider):
                 )
 
 
+class HydraFloodsDataset:
+    def __init__(
+        self,
+        dataset: Dataset,
+        region: ee.geometry.Geometry,
+        start_date: str,
+        end_date: str,
+        **kwargs,
+    ):
+        """Class for initializing Hydrafloods datasets.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            EO_Floods.Dataset object containing information on the dataset and configuration
+            for processing.
+        region : ee.geometry.Geometry
+            Earth Engine geometry that represents the area of interest.
+        start_date : str
+            Start date of the time window of interest (YYY-mm-dd).
+        end_date : str
+            End date of the time window of interest (YYY-mm-dd).
+        """
+        HF_datasets = {
+            "Sentinel-1": hf.Sentinel1,
+            "Sentinel-2": hf.Sentinel2,
+            "Landsat 7": hf.Landsat7,
+            "Landsat 8": hf.Landsat8,
+            "VIIRS": hf.Viirs,
+            "MODIS": hf.Modis,
+        }
+        self.name: str = dataset.name
+        self.short_name: str = dataset.short_name
+        self.imagery_type: ImageryType = dataset.imagery_type
+        self.default_flood_extent_algorithm: str = (
+            dataset.default_flood_extent_algorithm
+        )
+        self.algorithm_params: dict = dataset.algorithm_params
+        self.visual_params: dict = dataset.visual_params
+        self.obj: hf.Dataset = HF_datasets[dataset.name](
+            region=region, start_time=start_date, end_time=end_date, **kwargs
+        )
+        logger.debug(f"Initialized hydrafloods dataset for {self.name}")
+
+        # col_size = self.obj.n_images
+        # self.obj.collection = _mosaic_same_date_images(
+        #     self.obj.collection, size=col_size
+        # )
+
+
 def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
     imlist = imgcol.toList(size)
 
@@ -463,8 +418,3 @@ def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
         return img
 
     return ee.ImageCollection(unique_dates.map(_mosaic_dates))
-
-
-class GFM(Provider):
-    def init():
-        raise NotImplementedError

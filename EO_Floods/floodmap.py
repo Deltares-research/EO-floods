@@ -5,7 +5,7 @@ import sys
 import geemap.foliumap as geemap
 
 from EO_Floods.dataset import DATASETS, Dataset
-from EO_Floods.provider import providers, HydraFloods, GFM
+from EO_Floods.providers import Providers, HydraFloods, GFM
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -19,7 +19,7 @@ class FloodMap:
         end_date: str,
         geometry: List[float],
         datasets: List[str] | str = None,
-        provider: str = providers.HYDRAFLOODS.value,
+        provider: str = Providers.HYDRAFLOODS.value,
         **kwargs,
     ) -> None:
         """Flood map object for creating and exporting flood maps.
