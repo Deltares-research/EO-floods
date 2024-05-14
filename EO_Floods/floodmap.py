@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional
 import logging
 import sys
 
 import geemap.foliumap as geemap
 
 from EO_Floods.dataset import DATASETS, Dataset
+from EO_Floods.utils import get_dates_in_time_range
 from EO_Floods.providers import Providers, HydraFloods, GFM
 
 
@@ -18,8 +19,8 @@ class FloodMap:
         start_date: str,
         end_date: str,
         geometry: List[float],
-        datasets: List[str] | str = None,
-        provider: str = Providers.HYDRAFLOODS.value,
+        datasets: Optional[List[str] | str] = None,
+        provider: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Flood map object for creating and exporting flood maps.
@@ -38,30 +39,37 @@ class FloodMap:
             currently supported are: Sentinel-1, Sentinel-2, Landsat 7, Landsat 8,
             MODIS, and VIIRS. By default None
         provider : providers, optional
-            The dataset provider, by default providers.HYDRAFLOODS
-
+            The dataset provider, by default none
         """
         self.start_date = start_date
         self.end_date = end_date
+        self.dates = get_dates_in_time_range(
+            start_date_str=start_date, end_date_str=end_date
+        )
         self.geometry = geometry
+
         self.datasets = _instantiate_datasets(datasets)
+        if provider:
+            self.set_provider(provider, datasets)
+            log.info(f"Provider set as {provider}")
+        log.info("Flood map object initialized")
+
+    def set_provider(self, provider: str, datasets: Optional[List[str] | str]):
+        if datasets:
+            _instantiate_datasets(datasets)
         if provider == "hydrafloods":
             self.provider = HydraFloods(
                 datasets=self.datasets,
                 start_date=self.start_date,
                 end_date=self.end_date,
                 geometry=self.geometry,
-                **kwargs,
             )
         elif provider == "GFM":
-            self.provider = GFM()
+            raise NotImplementedError
         else:
-            log.debug(f"Error occured with provider variable: {provider}")
-            raise ValueError(f"Provider '{provider}' not recognized")
-        log.info("Flood map object initialized")
+            raise ValueError(f"Given provider {provider} not supported")
 
-    @property
-    def info(self) -> List[dict,]:
+    def available_data(self) -> List[dict,]:
         """Returns information of the chosen datasets for the given temporal and
         spatial resolution. The information contains the dataset name, the number
         of images, and the timestamp of the images.
@@ -71,7 +79,14 @@ class FloodMap:
         List[dict,]
             List of dictionaries describing the data
         """
-        return self.provider.info
+
+        hf = HydraFloods(
+            geometry=self.geometry,
+            datasets=self.datasets,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        return hf.info
 
     def preview_data(self, **kwargs) -> geemap.Map:
         """Preview the data in a map.
@@ -85,9 +100,9 @@ class FloodMap:
 
     def select_data(
         self,
-        datasets: List[str] | str = None,
-        start_date: str = None,
-        end_date: str = None,
+        datasets: Optional[List[str] | str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
     ) -> List[dict]:
         """Select data for futher processing. Data can be selected based on the
         datasets name and start and end date.
@@ -135,8 +150,7 @@ class FloodMap:
         return self.provider.export_data(**kwargs)
 
 
-@staticmethod
-def _instantiate_datasets(datasets: List[str] | str) -> List[Dataset]:
+def _instantiate_datasets(datasets: Optional[List[str] | str]) -> List[Dataset]:
     if isinstance(datasets, str):
         if datasets not in DATASETS.keys():
             raise ValueError(f"Dataset '{datasets}' not recognized")
@@ -144,3 +158,5 @@ def _instantiate_datasets(datasets: List[str] | str) -> List[Dataset]:
 
     elif isinstance(datasets, list):
         return [DATASETS[dataset] for dataset in datasets]
+    else:
+        return [dataset for dataset in DATASETS.values()]
