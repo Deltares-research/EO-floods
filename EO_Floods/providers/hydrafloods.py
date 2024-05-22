@@ -10,7 +10,7 @@ import ee
 import multiprocessing.pool
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
-from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
+from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser, calc_quality_score
 from EO_Floods.providers import ProviderBase
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class HydraFloods(ProviderBase):
         ]
 
     @property
-    def info(self) -> List[dict]:
+    def info(self) -> dict:
         """Information on the given datasets for the given temporal and spatial resolution.
 
         Returns
@@ -60,16 +60,16 @@ class HydraFloods(ProviderBase):
             List of dictionaries containing information on the datasets.
 
         """
-        dataset_info = []
+        datasets = {}
         for dataset in self.datasets:
-            dataset_info.append(
-                {
-                    "Name": dataset.name,
-                    "Dataset ID": dataset.obj.asset_id,
-                    "Number of images": dataset.obj.n_images,
-                    "Dates": dataset.obj.dates,
-                }
-            )
+            dataset_info = {}
+            n_images = dataset.obj.n_images
+            dataset_info["Dataset ID"] = dataset.obj.asset_id
+            dataset_info["Number of images"] = n_images
+            dataset_info["Dates"] = dataset.obj.dates
+            if n_images > 0:
+                dataset_info["QA_score"] = dataset._calc_quality_score()
+            datasets[dataset.name] = dataset_info
         return dataset_info
 
     def preview_data(self, zoom=8) -> geemap.Map:
@@ -390,6 +390,7 @@ class HydraFloodsDataset:
         self.default_flood_extent_algorithm: str = (
             dataset.default_flood_extent_algorithm
         )
+        self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.obj: hf.Dataset = HF_datasets[dataset.name](
@@ -401,6 +402,10 @@ class HydraFloodsDataset:
         # self.obj.collection = _mosaic_same_date_images(
         #     self.obj.collection, size=col_size
         # )
+    def _calc_quality_score(self) -> List[float]:
+        self.obj.apply_func(func=lambda x: calc_quality_score(x, band=self.qa_band, geom=x.geometry()), inplace=True)
+        qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
+        return [round(score,2) for score in qa_score]
 
 
 def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
@@ -418,3 +423,5 @@ def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
         return img
 
     return ee.ImageCollection(unique_dates.map(_mosaic_dates))
+
+

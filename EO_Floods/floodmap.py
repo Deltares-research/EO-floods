@@ -47,7 +47,6 @@ class FloodMap:
             start_date_str=start_date, end_date_str=end_date
         )
         self.geometry = geometry
-
         self.datasets = _instantiate_datasets(datasets)
         if provider:
             self.set_provider(provider, datasets)

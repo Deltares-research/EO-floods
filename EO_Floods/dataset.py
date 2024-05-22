@@ -14,6 +14,7 @@ class Dataset(BaseModel):
     imagery_type: ImageryType
     algorithm_params: dict
     visual_params: dict
+    qa_band: str
 
 
 class Sentinel1(Dataset):
@@ -23,6 +24,7 @@ class Sentinel1(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "VV"}}
     visual_params: dict = {"min": -25, "max": 0, "bands": ["VV"]}
+    qa_band: str = "VV"
 
 
 class Sentinel2(Dataset):
@@ -32,6 +34,7 @@ class Sentinel2(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
     visual_params: dict = {}
+    qa_band: str = "swir1"
 
 
 class Landsat7(Dataset):
@@ -41,6 +44,7 @@ class Landsat7(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
     visual_params: dict = {"bands": ["swir1", "nir", "green"], "min": 0, "max": 0.5}
+    qa_band: str = "swir1"
 
 
 class Landsat8(Dataset):
@@ -50,6 +54,7 @@ class Landsat8(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
     visual_params: dict = {"bands": ["swir1", "nir", "green"], "min": 0, "max": 0.5}
+    qa_band: str = "swir1"
 
 
 class VIIRS(Dataset):
@@ -59,6 +64,7 @@ class VIIRS(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
     visual_params: dict = {}
+    qa_band: str = "swir1"
 
 
 class MODIS(Dataset):
@@ -68,6 +74,7 @@ class MODIS(Dataset):
     default_flood_extent_algorithm: str = "edge_otsu"
     algorithm_params: dict = {"edge_otsu": {"band": "mndwi"}}
     visual_params: dict = {}
+    qa_band: str = "swir1"
 
 
 DATASETS = {
