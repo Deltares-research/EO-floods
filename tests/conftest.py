@@ -1,6 +1,6 @@
 from EO_Floods.auth import ee_initialize
 from EO_Floods.dataset import DATASETS
-from EO_Floods.provider import HydraFloods
+from EO_Floods.providers import HydraFloods
 
 ee_initialize()
 

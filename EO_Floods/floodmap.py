@@ -85,7 +85,7 @@ class FloodMap:
             start_date=self.start_date,
             end_date=self.end_date,
         )
-        return hf.info
+        return hf.available_data()
 
     def preview_data(self, **kwargs) -> geemap.Map:
         """Preview the data in a map.

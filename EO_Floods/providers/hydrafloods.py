@@ -8,6 +8,7 @@ from hydrafloods.geeutils import batch_export
 import geemap.foliumap as geemap
 import ee
 import multiprocessing.pool
+from tabulate import tabulate
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser, calc_quality_score
@@ -50,8 +51,8 @@ class HydraFloods(ProviderBase):
             for dataset in datasets
         ]
 
-    @property
-    def info(self) -> dict:
+    
+    def available_data(self) -> None:
         """Information on the given datasets for the given temporal and spatial resolution.
 
         Returns
@@ -61,16 +62,25 @@ class HydraFloods(ProviderBase):
 
         """
         datasets = {}
+        line0 = f"{'='*70}\n"
+        line1 = f"{'-'*70}\n"
+        output = ""
         for dataset in self.datasets:
-            dataset_info = {}
+            output += line0    
+            output += f"Dataset name: {dataset.name}\n"
             n_images = dataset.obj.n_images
-            dataset_info["Dataset ID"] = dataset.obj.asset_id
-            dataset_info["Number of images"] = n_images
-            dataset_info["Dates"] = dataset.obj.dates
+            output += f"Number of images: {n_images}\n"
+            output += f"Dataset ID: {dataset.obj.asset_id}\n\n"
+
             if n_images > 0:
-                dataset_info["QA_score"] = dataset._calc_quality_score()
-            datasets[dataset.name] = dataset_info
-        return dataset_info
+                dates = dataset.obj.dates
+                qa_scores = dataset._calc_quality_score()
+                table_list = [[x,y] for x,y in zip(dates, qa_scores)]
+                table = tabulate(table_list, headers = ["Timestamp", "Quality score (%)"],  tablefmt='orgtbl')
+                output += table + "\n\n"
+
+            
+        print(output)
 
     def preview_data(self, zoom=8) -> geemap.Map:
         """Previews the data by plotting it on a geemap.Map object per date of the image.
@@ -390,6 +400,7 @@ class HydraFloodsDataset:
         self.default_flood_extent_algorithm: str = (
             dataset.default_flood_extent_algorithm
         )
+        self.region = region
         self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
@@ -403,7 +414,9 @@ class HydraFloodsDataset:
         #     self.obj.collection, size=col_size
         # )
     def _calc_quality_score(self) -> List[float]:
-        self.obj.apply_func(func=lambda x: calc_quality_score(x, band=self.qa_band, geom=x.geometry()), inplace=True)
+        if self.name in ["VIIRS", "MODIS"]: # these datasets consist of global images, need to be clipped first before reducing
+            self.obj.apply_func(func=lambda x : x.clip(self.region), inplace=True)
+        self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
         qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
         return [round(score,2) for score in qa_score]
 

@@ -12,6 +12,7 @@ dependencies:
     - pytest
     - pydantic_settings
     - mock
+    - tabulate
 
 
 
