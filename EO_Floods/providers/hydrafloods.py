@@ -2,6 +2,7 @@ from typing import List, Optional
 import warnings
 import datetime
 import logging
+import re
 
 import hydrafloods as hf
 from hydrafloods.geeutils import batch_export
@@ -121,7 +122,12 @@ class HydraFloods(ProviderBase):
                 dates = dataset.obj.dates
             for date in dates:
                 d = ee.Date(date_parser(date))
-                img = dataset.obj.collection.filterDate(d, d.advance(1, "day"))
+                if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
+                    img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
+                else:
+                    img = dataset.obj.collection.filterDate(
+                        d, d.advance(1, "day")
+                    ).mosaic()
                 Map.add_layer(
                     img,
                     vis_params=vis_params.get(
