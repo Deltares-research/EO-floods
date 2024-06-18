@@ -68,15 +68,10 @@ class FloodMap:
         else:
             raise ValueError(f"Given provider {provider} not supported")
 
-    def available_data(self) -> List[dict,]:
-        """Returns information of the chosen datasets for the given temporal and
+    def available_data(self):
+        """Prints information of the chosen datasets for the given temporal and
         spatial resolution. The information contains the dataset name, the number
-        of images, and the timestamp of the images.
-
-        Returns
-        -------
-        List[dict,]
-            List of dictionaries describing the data
+        of images, the timestamp of the images, and a quality score in percentage.
         """
 
         hf = HydraFloods(
