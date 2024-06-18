@@ -1,7 +1,7 @@
 import pytest
 import geemap.foliumap as geemap
 import hydrafloods as hf
-from unittest.mock import patch, call
+from unittest.mock import patch
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
@@ -50,15 +50,11 @@ def test_available_data(mocked_print, flood_map):
     assert "MODIS" in print_args
 
 
-def test_FloodMap_preview_data():
-    floodmap = FloodMap(
-        start_date="2023-04-01",
-        end_date="2023-04-30",
-        geometry=[4.221067, 51.949474, 4.471006, 52.073727],
-        datasets="Sentinel-2",
-        provider="hydrafloods",
+def test_view_data(flood_map):
+    map = flood_map.view_data(
+        datasets=["Sentinel-1"],
+        dates=["2022-10-05 01:25:51.000", "2022-10-02 13:36:35.000"],
     )
-    map = floodmap.preview_data()
     assert isinstance(map, geemap.Map)
 
 

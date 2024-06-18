@@ -5,8 +5,8 @@ import sys
 import geemap.foliumap as geemap
 
 from EO_Floods.dataset import DATASETS, Dataset
-from EO_Floods.utils import get_dates_in_time_range
-from EO_Floods.providers import Providers, HydraFloods, GFM
+from EO_Floods.utils import get_dates_in_time_range, dates_within_daterange
+from EO_Floods.providers import HydraFloods
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -82,15 +82,50 @@ class FloodMap:
         )
         return hf.available_data()
 
-    def preview_data(self, **kwargs) -> geemap.Map:
-        """Preview the data in a map.
+    def view_data(
+        self,
+        datasets: Optional[List[str] | str] = None,
+        dates: Optional[List[str] | str] = None,
+        zoom: int = 8,
+        vis_params: dict = {},
+    ) -> geemap.Map:
+        """View data on a geemap instance. This can be used to visually check if
+        the quality of the data is sufficient for further processing to flood maps.
+        The data can be filtered based on date and dataset name.
+
+        Parameters
+        ----------
+        datasets : Optional[List[str]  |  str], optional
+            A subselection of datasets to display, by default the datasets specified
+            for the FloodMap object
+        dates : Optional[List[str]  |  str], optional
+            A subselection of dates to , by default None
+        zoom : int, optional
+            zoom level, by default 8
+        vis_params : dict, optional
+            A dictionary describing the visual parameters for each dataset, by default {}
 
         Returns
         -------
         geemap.Map
-            Map object containing the data specified in the flood map object
+            a geemap.Map instance to visualize in a jupyter notebook
         """
-        return self.provider.preview_data(**kwargs)
+        if dates:
+            dates_within_daterange(
+                dates=dates, start_date=self.start_date, end_date=self.end_date
+            )
+
+        if not datasets:
+            _datasets = self.datasets
+        else:
+            _datasets = _instantiate_datasets(datasets)
+        hf = HydraFloods(
+            geometry=self.geometry,
+            datasets=_datasets,
+            start_date=self.start_date,
+            end_date=self.end_date,
+        )
+        return hf.view_data(zoom, dates, vis_params)
 
     def select_data(
         self,

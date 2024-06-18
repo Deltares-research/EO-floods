@@ -111,11 +111,42 @@ def get_dates_in_time_range(start_date_str: str, end_date_str: str) -> list:
     return date_list
 
 
-def calc_quality_score(image: ee.Image, band: str, geom: Optional[ee.Geometry] = None)-> ee.Image:
+def calc_quality_score(
+    image: ee.Image, band: str, geom: Optional[ee.Geometry] = None
+) -> ee.Image:
     if not geom:
         geom = ee.Geometry(ee.Image(image).select(band).geometry())
-    masked_pixel_count = image.select(band).reduceRegion(reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10).get(band)
-    total_pixel_count = image.select(band).unmask().reduceRegion(reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10 ).get(band)
+    masked_pixel_count = (
+        image.select(band)
+        .reduceRegion(
+            reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10
+        )
+        .get(band)
+    )
+    total_pixel_count = (
+        image.select(band)
+        .unmask()
+        .reduceRegion(
+            reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10
+        )
+        .get(band)
+    )
     qa_score = ee.Number(masked_pixel_count).divide(total_pixel_count).multiply(100)
     return image.set({"qa_score": qa_score})
-    
+
+
+def dates_within_daterange(
+    dates: List[str] | str, start_date: str, end_date: str
+) -> bool:
+    start_date_ts = date_parser(start_date)
+    end_date_ts = date_parser(end_date)
+    if start_date >= end_date:
+        raise ValueError(
+            f"Start date '{start_date}' must occur before end date '{end_date}'"
+        )
+    if isinstance(dates, str):
+        dates = [dates]
+    for date in dates:
+        if not start_date_ts <= date_parser(date) <= end_date_ts:
+            raise ValueError(f"'{date}' not in {start_date}-{end_date} daterange")
+    return True
