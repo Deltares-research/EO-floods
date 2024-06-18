@@ -28,7 +28,7 @@ def test_FloodMap_init():
             datasets="sentinel",
             provider="hydrafloods",
         )
-    with pytest.raises(ValueError, match=r"Provider 'copernicus' not recognized"):
+    with pytest.raises(ValueError, match=r"Given provider 'copernicus' not supported"):
         floodmap = FloodMap(
             start_date="2023-04-01",
             end_date="2023-04-30",

@@ -66,7 +66,7 @@ class FloodMap:
         elif provider == "GFM":
             raise NotImplementedError
         else:
-            raise ValueError(f"Given provider {provider} not supported")
+            raise ValueError(f"Given provider '{provider}' not supported")
 
     def available_data(self):
         """Prints information of the chosen datasets for the given temporal and
