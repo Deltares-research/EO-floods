@@ -1,6 +1,7 @@
 import pytest
 import geemap.foliumap as geemap
 import hydrafloods as hf
+from unittest.mock import patch, call
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
@@ -27,7 +28,7 @@ def test_FloodMap_init():
             datasets="sentinel",
             provider="hydrafloods",
         )
-    with pytest.raises(ValueError, match=r"Provider 'copernicus' not recognized"):
+    with pytest.raises(ValueError, match=r"Given provider 'copernicus' not supported"):
         floodmap = FloodMap(
             start_date="2023-04-01",
             end_date="2023-04-30",
@@ -37,20 +38,16 @@ def test_FloodMap_init():
         )
 
 
-def test_FloodMap_info():
-    floodmap = FloodMap(
-        start_date="2023-04-01",
-        end_date="2023-04-30",
-        geometry=[4.221067, 51.949474, 4.471006, 52.073727],
-        datasets="Sentinel-2",
-        provider="hydrafloods",
-        use_qa=False,
-    )
-
-    floodmap_info = floodmap.info
-    assert isinstance(floodmap_info, list)
-    assert isinstance(floodmap_info[0], dict)
-    assert floodmap_info[0]["Number of images"] == 10
+@patch("builtins.print")
+def test_available_data(mocked_print, flood_map):
+    flood_map.available_data()
+    print_args = mocked_print.mock_calls[0][1][0]
+    assert "Sentinel-1" in print_args
+    assert "Sentinel-2" in print_args
+    assert "Landsat 7" in print_args
+    assert "Landsat 8" in print_args
+    assert "VIIRS" in print_args
+    assert "MODIS" in print_args
 
 
 def test_FloodMap_preview_data():

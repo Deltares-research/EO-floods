@@ -8,9 +8,10 @@ from hydrafloods.geeutils import batch_export
 import geemap.foliumap as geemap
 import ee
 import multiprocessing.pool
+from tabulate import tabulate
 
 from EO_Floods.dataset import Dataset, ImageryType, DATASETS
-from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser
+from EO_Floods.utils import coords_to_ee_geom, get_centroid, date_parser, calc_quality_score
 from EO_Floods.providers import ProviderBase
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,8 @@ class HydraFloods(ProviderBase):
             for dataset in datasets
         ]
 
-    @property
-    def info(self) -> List[dict]:
+    
+    def available_data(self) -> None:
         """Information on the given datasets for the given temporal and spatial resolution.
 
         Returns
@@ -60,17 +61,26 @@ class HydraFloods(ProviderBase):
             List of dictionaries containing information on the datasets.
 
         """
-        dataset_info = []
+        datasets = {}
+        line0 = f"{'='*70}\n"
+        line1 = f"{'-'*70}\n"
+        output = ""
         for dataset in self.datasets:
-            dataset_info.append(
-                {
-                    "Name": dataset.name,
-                    "Dataset ID": dataset.obj.asset_id,
-                    "Number of images": dataset.obj.n_images,
-                    "Dates": dataset.obj.dates,
-                }
-            )
-        return dataset_info
+            output += line0    
+            output += f"Dataset name: {dataset.name}\n"
+            n_images = dataset.obj.n_images
+            output += f"Number of images: {n_images}\n"
+            output += f"Dataset ID: {dataset.obj.asset_id}\n\n"
+
+            if n_images > 0:
+                dates = dataset.obj.dates
+                qa_scores = dataset._calc_quality_score()
+                table_list = [[x,y] for x,y in zip(dates, qa_scores)]
+                table = tabulate(table_list, headers = ["Timestamp", "Quality score (%)"],  tablefmt='orgtbl')
+                output += table + "\n\n"
+
+            
+        print(output)
 
     def preview_data(self, zoom=8) -> geemap.Map:
         """Previews the data by plotting it on a geemap.Map object per date of the image.
@@ -390,6 +400,8 @@ class HydraFloodsDataset:
         self.default_flood_extent_algorithm: str = (
             dataset.default_flood_extent_algorithm
         )
+        self.region = region
+        self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.obj: hf.Dataset = HF_datasets[dataset.name](
@@ -401,6 +413,12 @@ class HydraFloodsDataset:
         # self.obj.collection = _mosaic_same_date_images(
         #     self.obj.collection, size=col_size
         # )
+    def _calc_quality_score(self) -> List[float]:
+        if self.name in ["VIIRS", "MODIS"]: # these datasets consist of global images, need to be clipped first before reducing
+            self.obj.apply_func(func=lambda x : x.clip(self.region), inplace=True)
+        self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
+        qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
+        return [round(score,2) for score in qa_score]
 
 
 def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
@@ -418,3 +436,5 @@ def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
         return img
 
     return ee.ImageCollection(unique_dates.map(_mosaic_dates))
+
+

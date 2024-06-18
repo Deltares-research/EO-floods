@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
 from datetime import datetime, timedelta
 
@@ -109,3 +109,13 @@ def get_dates_in_time_range(start_date_str: str, end_date_str: str) -> list:
         current_date += timedelta(days=1)
 
     return date_list
+
+
+def calc_quality_score(image: ee.Image, band: str, geom: Optional[ee.Geometry] = None)-> ee.Image:
+    if not geom:
+        geom = ee.Geometry(ee.Image(image).select(band).geometry())
+    masked_pixel_count = image.select(band).reduceRegion(reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10).get(band)
+    total_pixel_count = image.select(band).unmask().reduceRegion(reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10 ).get(band)
+    qa_score = ee.Number(masked_pixel_count).divide(total_pixel_count).multiply(100)
+    return image.set({"qa_score": qa_score})
+    

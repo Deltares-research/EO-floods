@@ -3,7 +3,7 @@ import hydrafloods as hf
 import ee
 import geemap.foliumap as geemap
 import pytest
-from EO_Floods.provider import HydraFloodsDataset
+from EO_Floods.providers.hydrafloods import HydraFloodsDataset
 from EO_Floods.utils import date_parser
 from tests.conftest import get_hydrafloods_instance
 
