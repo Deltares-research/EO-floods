@@ -6,6 +6,8 @@ dependencies:
   - pip
   - pydantic
   - jupyter
+  - numpy=1.26.0
+  - pandas=2.2.1
   - pip:
     - hydrafloods
     - geemap
