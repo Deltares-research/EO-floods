@@ -131,7 +131,9 @@ class HydraFloods(ProviderBase):
                 )
         return Map
 
-    def generate_flood_extents(self, dates, clip_ocean: bool = True) -> None:
+    def generate_flood_extents(
+        self, dates: List[str] | str, clip_ocean: bool = True
+    ) -> None:
         """Generates flood extents on the selected datasets and for the given temporal
         and spatial resolution.
 
@@ -339,7 +341,7 @@ class HydraFloods(ProviderBase):
                 )
 
 
-def _filter_collection_by_dates(date: str, dataset: HydraFloodsDataset):
+def _filter_collection_by_dates(date: str, dataset):
     d = ee.Date(date_parser(date))
     if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
         img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
