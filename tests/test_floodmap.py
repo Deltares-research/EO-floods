@@ -3,7 +3,7 @@ import geemap
 import hydrafloods as hf
 from unittest.mock import patch
 
-from EO_Floods.floodmap import FloodMap
+from EO_Floods.floodmap import FloodMap, ProviderError
 from EO_Floods.dataset import Dataset
 
 
@@ -28,7 +28,9 @@ def test_FloodMap_init():
             datasets="sentinel",
             provider="hydrafloods",
         )
-    with pytest.raises(ValueError, match=r"Given provider 'copernicus' not supported"):
+    with pytest.raises(
+        ProviderError, match=r"Given provider 'copernicus' not supported"
+    ):
         floodmap = FloodMap(
             start_date="2023-04-01",
             end_date="2023-04-30",

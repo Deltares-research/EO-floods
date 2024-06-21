@@ -121,13 +121,7 @@ class HydraFloods(ProviderBase):
             if dates is None:
                 dates = dataset.obj.dates
             for date in dates:
-                d = ee.Date(date_parser(date))
-                if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
-                    img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
-                else:
-                    img = dataset.obj.collection.filterDate(
-                        d, d.advance(1, "day")
-                    ).mosaic()
+                img = _filter_collection_by_dates(date, dataset)
                 Map.add_layer(
                     img,
                     vis_params=vis_params.get(
@@ -137,60 +131,7 @@ class HydraFloods(ProviderBase):
                 )
         return Map
 
-    def select_data(
-        self,
-        datasets: Optional[List[str] | str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> List[dict]:
-        """Select data that is suitable for generating flood extents. Selection can
-        be made based on the dataset name and time range.
-
-        Parameters
-        ----------
-        datasets : List[str] | str, optional
-            name(s) of dataset(s) to select data for, by default None.
-        start_date : str, optional
-            Start date of time window of interest, by default None
-        end_date : str, optional
-            End date of time window interest, end date is exclusive, by default None,
-
-        Returns
-        -------
-        List[dict]
-            Returning Hydrafloods.info on the selected data
-        """
-        if isinstance(datasets, str):
-            datasets = [datasets]
-
-        if start_date and (start_date == end_date):
-            logger.warning(
-                "End date should be exclusive, setting end date to a day later"
-            )
-            end_date = datetime.datetime.strftime(
-                date_parser(end_date) + datetime.timedelta(days=1), "%Y-%m-%d"
-            )
-
-        if not all([start_date, end_date]):
-            logger.info(
-                "No start date or end date were given, defaulting to "
-                f"original start and end date: {self.start_date}, {self.end_date}"
-            )
-            start_date = self.start_date
-            end_date = self.end_date
-
-        if not datasets:
-            datasets = [dataset.name for dataset in self.datasets]
-
-        self.datasets = [
-            HydraFloodsDataset(
-                DATASETS[dataset_name], self.geometry, start_date, end_date
-            )
-            for dataset_name in datasets
-        ]
-        return self.info
-
-    def generate_flood_extents(self, clip_ocean: bool = True) -> None:
+    def generate_flood_extents(self, dates, clip_ocean: bool = True) -> None:
         """Generates flood extents on the selected datasets and for the given temporal
         and spatial resolution.
 
@@ -211,6 +152,12 @@ class HydraFloods(ProviderBase):
                     UserWarning,
                 )
                 continue
+            if dates:
+                imgs = []
+                for date in dates:
+                    imgs.append(_filter_collection_by_dates(date, dataset))
+                dataset.obj = hf.Dataset.from_imgcollection(ee.ImageCollection(imgs))
+
             if clip_ocean:
                 logger.info("Clipping image to country boundaries")
                 country_boundary = (
@@ -390,6 +337,15 @@ class HydraFloods(ProviderBase):
                     .nominalScale(),
                     **kwargs,
                 )
+
+
+def _filter_collection_by_dates(date: str, dataset: HydraFloodsDataset):
+    d = ee.Date(date_parser(date))
+    if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
+        img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
+    else:
+        img = dataset.obj.collection.filterDate(d, d.advance(1, "day")).mosaic()
+    return img
 
 
 class HydraFloodsDataset:
