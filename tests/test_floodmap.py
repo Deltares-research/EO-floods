@@ -3,7 +3,7 @@ import geemap
 import hydrafloods as hf
 from unittest.mock import patch
 
-from EO_Floods.floodmap import FloodMap, ProviderError
+from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
 
 
@@ -28,9 +28,7 @@ def test_FloodMap_init():
             datasets="sentinel",
             provider="hydrafloods",
         )
-    with pytest.raises(
-        ProviderError, match=r"Given provider 'copernicus' not supported"
-    ):
+    with pytest.raises(ValueError, match=r"Given provider 'copernicus' not supported"):
         floodmap = FloodMap(
             start_date="2023-04-01",
             end_date="2023-04-30",
@@ -53,14 +51,16 @@ def test_available_data(mocked_print, flood_map):
 
 
 def test_view_data(flood_map):
-    map = flood_map.view_data(
+    viewer = flood_map.view_data(
         datasets=["Sentinel-1"],
         dates=["2022-10-05 01:25:51.000", "2022-10-05 01:25:26.000"],
     )
-    assert isinstance(map, geemap.foliumap.Map)
+    assert isinstance(viewer, geemap.foliumap.Map)
     # assert that there are two ee tile layers in the map object
-    for key in list(map._children.keys())[-2:]:
-        assert isinstance(map._children[key], geemap.ee_tile_layers.EEFoliumTileLayer)
+    for key in list(viewer._children.keys())[-2:]:
+        assert isinstance(
+            viewer._children[key], geemap.ee_tile_layers.EEFoliumTileLayer
+        )
 
 
 def test_FloodMap_workflow():

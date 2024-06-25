@@ -132,13 +132,15 @@ class HydraFloods(ProviderBase):
         return Map
 
     def generate_flood_extents(
-        self, dates: List[str] | str, clip_ocean: bool = True
+        self, dates: Optional[List[str]] = None, clip_ocean: bool = True
     ) -> None:
         """Generates flood extents on the selected datasets and for the given temporal
         and spatial resolution.
 
         Parameters
         ----------
+        date: list of str, optional
+            list of date strings for making a subselection of images.
         clip_ocean : bool, optional
             Option for clipping ocean pixels from the images. Ocean pixels can negatively
             influence the edge otsu algorithm. The clipping is done by using country
@@ -155,11 +157,14 @@ class HydraFloods(ProviderBase):
                 )
                 continue
             if dates:
-                imgs = []
-                for date in dates:
-                    imgs.append(_filter_collection_by_dates(date, dataset))
-                dataset.obj = hf.Dataset.from_imgcollection(ee.ImageCollection(imgs))
+                # Filter the dataset on dates
+                if len(dates) > 1:
+                    filter = _multiple_dates_filter(dates)
+                else:
+                    filter = _date_filter(dates[0])
+                dataset.obj.filter(filter, inplace=True)
 
+            # Clip
             if clip_ocean:
                 logger.info("Clipping image to country boundaries")
                 country_boundary = (
@@ -199,8 +204,8 @@ class HydraFloods(ProviderBase):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
-        """Plots the flood extents on a geemap.Map object.
+    def view_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
+        """View the flood extents on a geemap.Map object.
 
         Parameters
         ----------
@@ -215,32 +220,33 @@ class HydraFloods(ProviderBase):
 
         """
 
-        def _plot_flood_extents(zoom: int):
-            if not hasattr(self, "flood_extents"):
-                raise RuntimeError(
-                    "generate_flood_extents() needs to be called before calling this method"
-                )
+        if not hasattr(self, "flood_extents"):
+            raise RuntimeError(
+                "generate_flood_extents() needs to be called before calling this method"
+            )
 
+        def _plot_flood_extents(zoom: int):
             flood_extent_vis_params = {
                 "bands": ["water"],
                 "min": 0,
                 "max": 1,
                 "palette": ["#C0C0C0", "#000080"],
             }
-            map = self.preview_data()
+            map = self.view_data()
             for ds_name in self.flood_extents:
-                for date in self.flood_extents[ds_name].dates:
-                    d = ee.Date(date_parser(date))
-                    img = (
-                        self.flood_extents[ds_name]
-                        .collection.filterDate(d, d.advance(1, "day"))
-                        .mode()
-                    )
-                    map.add_layer(
+                img_col = self.flood_extents[ds_name].collection
+                n_images = img_col.size().getInfo()
+                for n in range(n_images):
+                    img = ee.Image(img_col.toList(n_images).get(n))
+                    # date = datetime.datetime.fromtimestamp(
+                    #     img.get("system:time_start").getInfo()
+                    # ).strftime("%Y-%m-%d HH:MM:SS")
+                    map.addLayer(
                         img,
                         vis_params=flood_extent_vis_params,
-                        name=f"{ds_name} {date} flood extent",
+                        name=f"{ds_name}  flood extent",
                     )
+
                 max_extent_img = self.flood_extents[ds_name].collection.max()
                 map.add_layer(
                     max_extent_img,
@@ -256,7 +262,7 @@ class HydraFloods(ProviderBase):
                 )
         except multiprocessing.TimeoutError:
             raise TimeoutError(
-                "Plotting floodmaps has timed out, increase the time out threshold or plot a smaller selection of your data"
+                "Plotting flood extents has timed out, increase the time out threshold or plot a smaller selection of your data"
             )
         return return_value
 
@@ -341,12 +347,22 @@ class HydraFloods(ProviderBase):
                 )
 
 
-def _filter_collection_by_dates(date: str, dataset):
+def _date_filter(date: str) -> ee.Filter:
     d = ee.Date(date_parser(date))
+    # If timestamp contains h:m:s filter on seconds
     if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
-        img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
-    else:
-        img = dataset.obj.collection.filterDate(d, d.advance(1, "day")).mosaic()
+        return ee.Filter.date(d, d.advance(1, "second"))
+    # else by day
+    return ee.Filter.date(d, d.advance(1, "day"))
+
+
+def _multiple_dates_filter(dates: list[str]):
+    filters = [_date_filter(date) for date in dates]
+    return ee.Filter.Or(*filters)
+
+
+def _filter_collection_by_dates(date: str, dataset):
+    img = dataset.obj.collection.filter(_date_filter(date))
     return img
 
 
@@ -409,20 +425,3 @@ class HydraFloodsDataset:
         self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
         qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
         return [round(score, 2) for score in qa_score]
-
-
-def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
-    imlist = imgcol.toList(size)
-
-    unique_dates = imlist.map(
-        lambda x: ee.Image(x).date().format("YYYY-MM-dd")
-    ).distinct()
-
-    def _mosaic_dates(d):
-        d = ee.Date(d)
-        img_props = imgcol.filterDate(d, d.advance(1, "day")).first()
-        img = imgcol.filterDate(d, d.advance(1, "day")).mosaic()
-        img = img.copyProperties(img_props, ["system:time_start", "system:id"])
-        return img
-
-    return ee.ImageCollection(unique_dates.map(_mosaic_dates))
