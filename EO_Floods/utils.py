@@ -135,17 +135,14 @@ def calc_quality_score(
     return image.set({"qa_score": qa_score})
 
 
-def dates_within_daterange(
-    dates: List[str] | str, start_date: str, end_date: str
-) -> bool:
+def dates_within_daterange(dates: List[str], start_date: str, end_date: str) -> bool:
     start_date_ts = date_parser(start_date)
     end_date_ts = date_parser(end_date)
     if start_date >= end_date:
         raise ValueError(
             f"Start date '{start_date}' must occur before end date '{end_date}'"
         )
-    if isinstance(dates, str):
-        dates = [dates]
+
     for date in dates:
         if not start_date_ts <= date_parser(date) <= end_date_ts:
             raise ValueError(f"'{date}' not in {start_date}-{end_date} daterange")

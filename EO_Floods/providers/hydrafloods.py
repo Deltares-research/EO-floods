@@ -73,7 +73,8 @@ class HydraFloods(ProviderBase):
             output += f"Dataset name: {dataset.name}\n"
             n_images = dataset.obj.n_images
             output += f"Number of images: {n_images}\n"
-            output += f"Dataset ID: {dataset.obj.asset_id}\n\n"
+            output += f"Dataset ID: {dataset.obj.asset_id}\n"
+            output += f"Providers: {', '.join(dataset.providers)}\n\n"
 
             if n_images > 0:
                 dates = dataset.obj.dates
@@ -121,13 +122,7 @@ class HydraFloods(ProviderBase):
             if dates is None:
                 dates = dataset.obj.dates
             for date in dates:
-                d = ee.Date(date_parser(date))
-                if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
-                    img = dataset.obj.collection.filterDate(d, d.advance(1, "second"))
-                else:
-                    img = dataset.obj.collection.filterDate(
-                        d, d.advance(1, "day")
-                    ).mosaic()
+                img = _filter_collection_by_dates(date, dataset)
                 Map.add_layer(
                     img,
                     vis_params=vis_params.get(
@@ -137,65 +132,16 @@ class HydraFloods(ProviderBase):
                 )
         return Map
 
-    def select_data(
-        self,
-        datasets: Optional[List[str] | str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> List[dict]:
-        """Select data that is suitable for generating flood extents. Selection can
-        be made based on the dataset name and time range.
-
-        Parameters
-        ----------
-        datasets : List[str] | str, optional
-            name(s) of dataset(s) to select data for, by default None.
-        start_date : str, optional
-            Start date of time window of interest, by default None
-        end_date : str, optional
-            End date of time window interest, end date is exclusive, by default None,
-
-        Returns
-        -------
-        List[dict]
-            Returning Hydrafloods.info on the selected data
-        """
-        if isinstance(datasets, str):
-            datasets = [datasets]
-
-        if start_date and (start_date == end_date):
-            logger.warning(
-                "End date should be exclusive, setting end date to a day later"
-            )
-            end_date = datetime.datetime.strftime(
-                date_parser(end_date) + datetime.timedelta(days=1), "%Y-%m-%d"
-            )
-
-        if not all([start_date, end_date]):
-            logger.info(
-                "No start date or end date were given, defaulting to "
-                f"original start and end date: {self.start_date}, {self.end_date}"
-            )
-            start_date = self.start_date
-            end_date = self.end_date
-
-        if not datasets:
-            datasets = [dataset.name for dataset in self.datasets]
-
-        self.datasets = [
-            HydraFloodsDataset(
-                DATASETS[dataset_name], self.geometry, start_date, end_date
-            )
-            for dataset_name in datasets
-        ]
-        return self.info
-
-    def generate_flood_extents(self, clip_ocean: bool = True) -> None:
+    def generate_flood_extents(
+        self, dates: Optional[List[str]] = None, clip_ocean: bool = True
+    ) -> None:
         """Generates flood extents on the selected datasets and for the given temporal
         and spatial resolution.
 
         Parameters
         ----------
+        date: list of str, optional
+            list of date strings for making a subselection of images.
         clip_ocean : bool, optional
             Option for clipping ocean pixels from the images. Ocean pixels can negatively
             influence the edge otsu algorithm. The clipping is done by using country
@@ -211,6 +157,15 @@ class HydraFloods(ProviderBase):
                     UserWarning,
                 )
                 continue
+            if dates:
+                # Filter the dataset on dates
+                if len(dates) > 1:
+                    filter = _multiple_dates_filter(dates)
+                else:
+                    filter = _date_filter(dates[0])
+                dataset.obj.filter(filter, inplace=True)
+
+            # Clip
             if clip_ocean:
                 logger.info("Clipping image to country boundaries")
                 country_boundary = (
@@ -236,7 +191,8 @@ class HydraFloods(ProviderBase):
                 )
             logger.info("Applying edge-otsu thresholding")
             flood_extent = dataset.obj.apply_func(
-                hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
+                hf.edge_otsu,
+                **dataset.algorithm_params["edge_otsu"],
             )
 
             # Invert values of flood extent so that water=1, land=0
@@ -250,8 +206,8 @@ class HydraFloods(ProviderBase):
     def generate_flood_depths(self):
         pass
 
-    def plot_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
-        """Plots the flood extents on a geemap.Map object.
+    def view_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
+        """View the flood extents on a geemap.Map object.
 
         Parameters
         ----------
@@ -266,32 +222,33 @@ class HydraFloods(ProviderBase):
 
         """
 
-        def _plot_flood_extents(zoom: int):
-            if not hasattr(self, "flood_extents"):
-                raise RuntimeError(
-                    "generate_flood_extents() needs to be called before calling this method"
-                )
+        if not hasattr(self, "flood_extents"):
+            raise RuntimeError(
+                "generate_flood_extents() needs to be called before calling this method"
+            )
 
+        def _plot_flood_extents(zoom: int):
             flood_extent_vis_params = {
                 "bands": ["water"],
                 "min": 0,
                 "max": 1,
                 "palette": ["#C0C0C0", "#000080"],
             }
-            map = self.preview_data()
+            map = self.view_data()
             for ds_name in self.flood_extents:
-                for date in self.flood_extents[ds_name].dates:
-                    d = ee.Date(date_parser(date))
-                    img = (
-                        self.flood_extents[ds_name]
-                        .collection.filterDate(d, d.advance(1, "day"))
-                        .mode()
-                    )
-                    map.add_layer(
+                img_col = self.flood_extents[ds_name].collection
+                n_images = img_col.size().getInfo()
+                for n in range(n_images):
+                    img = ee.Image(img_col.toList(n_images).get(n))
+                    # date = datetime.datetime.fromtimestamp(
+                    #     img.get("system:time_start").getInfo()
+                    # ).strftime("%Y-%m-%d HH:MM:SS")
+                    map.addLayer(
                         img,
                         vis_params=flood_extent_vis_params,
-                        name=f"{ds_name} {date} flood extent",
+                        name=f"{ds_name}  flood extent",
                     )
+
                 max_extent_img = self.flood_extents[ds_name].collection.max()
                 map.add_layer(
                     max_extent_img,
@@ -307,7 +264,7 @@ class HydraFloods(ProviderBase):
                 )
         except multiprocessing.TimeoutError:
             raise TimeoutError(
-                "Plotting floodmaps has timed out, increase the time out threshold or plot a smaller selection of your data"
+                "Plotting flood extents has timed out, increase the time out threshold or plot a smaller selection of your data"
             )
         return return_value
 
@@ -392,6 +349,25 @@ class HydraFloods(ProviderBase):
                 )
 
 
+def _date_filter(date: str) -> ee.Filter:
+    d = ee.Date(date_parser(date))
+    # If timestamp contains h:m:s filter on seconds
+    if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
+        return ee.Filter.date(d, d.advance(1, "second"))
+    # else by day
+    return ee.Filter.date(d, d.advance(1, "day"))
+
+
+def _multiple_dates_filter(dates: list[str]):
+    filters = [_date_filter(date) for date in dates]
+    return ee.Filter.Or(*filters)
+
+
+def _filter_collection_by_dates(date: str, dataset):
+    img = dataset.obj.collection.filter(_date_filter(date))
+    return img
+
+
 class HydraFloodsDataset:
     def __init__(
         self,
@@ -433,6 +409,7 @@ class HydraFloodsDataset:
         self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
+        self.providers = dataset.providers
         self.obj: hf.Dataset = HF_datasets[dataset.name](
             region=region, start_time=start_date, end_time=end_date, **kwargs
         )
@@ -451,20 +428,3 @@ class HydraFloodsDataset:
         self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
         qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
         return [round(score, 2) for score in qa_score]
-
-
-def _mosaic_same_date_images(imgcol: ee.ImageCollection, size: int):
-    imlist = imgcol.toList(size)
-
-    unique_dates = imlist.map(
-        lambda x: ee.Image(x).date().format("YYYY-MM-dd")
-    ).distinct()
-
-    def _mosaic_dates(d):
-        d = ee.Date(d)
-        img_props = imgcol.filterDate(d, d.advance(1, "day")).first()
-        img = imgcol.filterDate(d, d.advance(1, "day")).mosaic()
-        img = img.copyProperties(img_props, ["system:time_start", "system:id"])
-        return img
-
-    return ee.ImageCollection(unique_dates.map(_mosaic_dates))
