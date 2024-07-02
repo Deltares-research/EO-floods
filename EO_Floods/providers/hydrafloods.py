@@ -74,7 +74,7 @@ class HydraFloods(ProviderBase):
             n_images = dataset.obj.n_images
             output += f"Number of images: {n_images}\n"
             output += f"Dataset ID: {dataset.obj.asset_id}\n"
-            output += f"Providers: {' ,'.join(dataset.providers)}\n\n"
+            output += f"Providers: {', '.join(dataset.providers)}\n\n"
 
             if n_images > 0:
                 dates = dataset.obj.dates
