@@ -73,7 +73,8 @@ class HydraFloods(ProviderBase):
             output += f"Dataset name: {dataset.name}\n"
             n_images = dataset.obj.n_images
             output += f"Number of images: {n_images}\n"
-            output += f"Dataset ID: {dataset.obj.asset_id}\n\n"
+            output += f"Dataset ID: {dataset.obj.asset_id}\n"
+            output += f"Providers: {' ,'.join(dataset.providers)}\n\n"
 
             if n_images > 0:
                 dates = dataset.obj.dates
@@ -190,7 +191,8 @@ class HydraFloods(ProviderBase):
                 )
             logger.info("Applying edge-otsu thresholding")
             flood_extent = dataset.obj.apply_func(
-                hf.edge_otsu, **dataset.algorithm_params["edge_otsu"]
+                hf.edge_otsu,
+                **dataset.algorithm_params["edge_otsu"],
             )
 
             # Invert values of flood extent so that water=1, land=0
@@ -407,6 +409,7 @@ class HydraFloodsDataset:
         self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
+        self.providers = dataset.providers
         self.obj: hf.Dataset = HF_datasets[dataset.name](
             region=region, start_time=start_date, end_time=end_date, **kwargs
         )
