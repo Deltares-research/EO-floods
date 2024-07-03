@@ -5,7 +5,7 @@ import hydrafloods as hf
 from unittest.mock import patch
 
 from EO_Floods.floodmap import FloodMap
-from EO_Floods.dataset import Dataset
+from EO_Floods.providers.hydrafloods.dataset import Dataset
 from EO_Floods.providers.hydrafloods import HydraFloods
 
 

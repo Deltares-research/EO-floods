@@ -4,7 +4,7 @@ import sys
 
 import geemap.foliumap as geemap
 
-from EO_Floods.dataset import DATASETS, Dataset
+from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
 from EO_Floods.utils import get_dates_in_time_range, dates_within_daterange
 from EO_Floods.providers import HydraFloods
 
