@@ -2,9 +2,9 @@ import logging
 from typing import List
 
 from EO_Floods.providers import ProviderBase
-from EO_Floods.auth import GFM_authenticate
+from EO_Floods.providers.GFM.auth import GFM_authenticate
 from EO_Floods.utils import coords_to_geojson
-from EO_Floods.leaflet import WMS_MapObject
+from EO_Floods.providers.GFM.leaflet import WMS_MapObject
 
 logger = logging.getLogger(__name__)
 
