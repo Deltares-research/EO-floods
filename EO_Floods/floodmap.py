@@ -154,9 +154,13 @@ class FloodMap:
                 dates_within_daterange(
                     dates, start_date=self.start_date, end_date=self.end_date
                 )
-            self.provider.generate_flood_extents(dates)
+            self._provider.generate_flood_extents(dates)
         elif provider == "GFM":
             self.provider_name = "GFM"
+            if datasets is not None and datasets != "Sentinel-1":
+                log.warning(
+                    "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
+                )
             raise NotImplementedError
         else:
             self.provider_name = provider
@@ -177,7 +181,7 @@ class FloodMap:
 
         """
         if self.provider_name == "hydrafloods":
-            return self.provider.view_flood_extents(timeout=timeout, **kwargs)
+            return self._provider.view_flood_extents(timeout=timeout, **kwargs)
         if self.provider_name == "GFM":
             raise NotImplementedError
 

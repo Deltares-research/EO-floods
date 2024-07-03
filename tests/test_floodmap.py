@@ -1,10 +1,12 @@
 import pytest
 import geemap
+import logging
 import hydrafloods as hf
 from unittest.mock import patch
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
+from EO_Floods.providers.hydrafloods import HydraFloods
 
 
 def test_FloodMap_init():
@@ -63,7 +65,8 @@ def test_view_data(flood_map):
         )
 
 
-def test_FloodMap_workflow():
+@pytest.mark.integration()
+def test_floodmap_workflow():
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -71,14 +74,25 @@ def test_FloodMap_workflow():
         datasets="Landsat 8",
         provider="hydrafloods",
     )
-    info = floodmap.info
-    assert isinstance(info, list)
-    preview = floodmap.preview_data()
-    assert isinstance(preview, geemap.Map)
-    data_selection = floodmap.select_data(
-        datasets="Landsat 8", start_date="2023-04-03", end_date="2023-04-04"
-    )
-    assert isinstance(data_selection, list)
+    floodmap.available_data()
+    preview = floodmap.view_data()
+    assert isinstance(preview, geemap.foliumap.Map)
     floodmap.generate_flood_extents()
     assert hasattr(floodmap.provider, "flood_extents")
     assert isinstance(floodmap.provider.flood_extents["Landsat 8"], hf.Dataset)
+
+
+def test_floodmap_generate_flood_extents(flood_map, caplog):
+    flood_map.generate_flood_extents()
+    assert len(flood_map.datasets) == 6
+    assert "Sentinel-1" in [ds.name for ds in flood_map.datasets]
+    assert hasattr(flood_map, "_provider")
+    assert isinstance(flood_map._provider, HydraFloods)
+
+    caplog.set_level(logging.WARNING)
+    with pytest.raises(NotImplementedError):
+        flood_map.generate_flood_extents(provider="GFM", datasets=["Landsat 7"])
+    assert (
+        "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
+        in caplog.text
+    )
