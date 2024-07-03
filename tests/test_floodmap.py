@@ -1,13 +1,15 @@
 import pytest
 import geemap
+import logging
 import hydrafloods as hf
 from unittest.mock import patch
 
 from EO_Floods.floodmap import FloodMap
 from EO_Floods.dataset import Dataset
+from EO_Floods.providers.hydrafloods import HydraFloods
 
 
-def test_FloodMap_init():
+def test_init():
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -51,17 +53,20 @@ def test_available_data(mocked_print, flood_map):
 
 
 def test_view_data(flood_map):
-    map = flood_map.view_data(
+    viewer = flood_map.view_data(
         datasets=["Sentinel-1"],
         dates=["2022-10-05 01:25:51.000", "2022-10-05 01:25:26.000"],
     )
-    assert isinstance(map, geemap.foliumap.Map)
+    assert isinstance(viewer, geemap.foliumap.Map)
     # assert that there are two ee tile layers in the map object
-    for key in list(map._children.keys())[-2:]:
-        assert isinstance(map._children[key], geemap.ee_tile_layers.EEFoliumTileLayer)
+    for key in list(viewer._children.keys())[-2:]:
+        assert isinstance(
+            viewer._children[key], geemap.ee_tile_layers.EEFoliumTileLayer
+        )
 
 
-def test_FloodMap_workflow():
+@pytest.mark.integration()
+def test_workflow():
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -69,14 +74,33 @@ def test_FloodMap_workflow():
         datasets="Landsat 8",
         provider="hydrafloods",
     )
-    info = floodmap.info
-    assert isinstance(info, list)
-    preview = floodmap.preview_data()
-    assert isinstance(preview, geemap.Map)
-    data_selection = floodmap.select_data(
-        datasets="Landsat 8", start_date="2023-04-03", end_date="2023-04-04"
-    )
-    assert isinstance(data_selection, list)
+    floodmap.available_data()
+    preview = floodmap.view_data()
+    assert isinstance(preview, geemap.foliumap.Map)
     floodmap.generate_flood_extents()
     assert hasattr(floodmap.provider, "flood_extents")
     assert isinstance(floodmap.provider.flood_extents["Landsat 8"], hf.Dataset)
+
+
+def test_generate_flood_extents(flood_map, caplog):
+    flood_map.generate_flood_extents()
+    assert len(flood_map.datasets) == 6
+    assert "Sentinel-1" in [ds.name for ds in flood_map.datasets]
+    assert hasattr(flood_map, "_provider")
+    assert isinstance(flood_map._provider, HydraFloods)
+
+    caplog.set_level(logging.WARNING)
+    with pytest.raises(NotImplementedError):
+        flood_map.generate_flood_extents(provider="GFM", datasets=["Landsat 7"])
+    assert (
+        "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
+        in caplog.text
+    )
+
+
+def test_export_data(flood_map):
+    with pytest.raises(
+        RuntimeError,
+        match="FloodMap instance has no data to export, generate flood extents first before calling export_data",
+    ):
+        flood_map.export_data()

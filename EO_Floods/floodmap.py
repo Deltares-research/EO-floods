@@ -12,6 +12,8 @@ from EO_Floods.providers import HydraFloods
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 log = logging.getLogger(__name__)
 
+PROVIDERS = ["hydrafloods", "GFM"]
+
 
 class FloodMap:
     def __init__(
@@ -49,24 +51,29 @@ class FloodMap:
         self.geometry = geometry
         self.datasets = _instantiate_datasets(datasets)
         if provider:
-            self.set_provider(provider, datasets)
+            self.provider_name = provider
+
             log.info(f"Provider set as {provider}")
+        self._provider = None
+
         log.info("Flood map object initialized")
 
-    def set_provider(self, provider: str, datasets: Optional[List[str] | str]):
-        if datasets:
-            _instantiate_datasets(datasets)
-        if provider == "hydrafloods":
-            self.provider = HydraFloods(
-                datasets=self.datasets,
-                start_date=self.start_date,
-                end_date=self.end_date,
-                geometry=self.geometry,
+    @property
+    def provider_name(self):
+        return self._provider_name
+
+    @provider_name.setter
+    def provider_name(self, _provider):
+        if _provider not in PROVIDERS:
+            raise ValueError(
+                f"Given provider '{_provider}' not supported, choose from: {' ,'.join(PROVIDERS)}"
             )
-        elif provider == "GFM":
-            raise NotImplementedError
-        else:
-            raise ValueError(f"Given provider '{provider}' not supported")
+        self._provider_name = _provider
+
+    @property
+    def provider(self):
+        """Property to fetch the provider object."""
+        return self._provider
 
     def available_data(self):
         """Prints information of the chosen datasets for the given temporal and
@@ -127,41 +134,44 @@ class FloodMap:
         )
         return hf.view_data(zoom, dates, vis_params)
 
-    def select_data(
+    def generate_flood_extents(
         self,
+        provider: str = "hydrafloods",
         datasets: Optional[List[str] | str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-    ) -> List[dict]:
-        """Select data for futher processing. Data can be selected based on the
-        datasets name and start and end date.
-
-        Parameters
-        ----------
-        datasets : List[str] | str, optional
-            name(s) of the selected dataset(s), by default None
-        start_date : str, optional
-            start date in YYYY-mm-dd, by default None
-        end_date : str, optional
-            end date in YYYY-mm-dd, end date is exclusive, by default None
-
-        Returns
-        -------
-        List[dict]
-            description of the selected data in the same format as FloodMap.info
-        """
-        self.datasets = _instantiate_datasets(datasets)
-        return self.provider.select_data(datasets, start_date, end_date)
-
-    def generate_flood_extents(self):
+        dates: Optional[List[str] | str] = None,
+    ):
         """Generates flood extents."""
-        self.provider.generate_flood_extents()
+        if provider == "hydrafloods":
+            self.provider_name = "hydrafloods"
+            if datasets:
+                self.datasets = _instantiate_datasets(datasets=datasets)
+            self._provider = HydraFloods(
+                datasets=self.datasets,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                geometry=self.geometry,
+            )
+            if dates:
+                if isinstance(dates, str):
+                    dates = [dates]
+                dates_within_daterange(
+                    dates, start_date=self.start_date, end_date=self.end_date
+                )
+            self._provider.generate_flood_extents(dates)
+        elif provider == "GFM":
+            self.provider_name = "GFM"
+            if datasets is not None and datasets != "Sentinel-1":
+                log.warning(
+                    "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
+                )
+            raise NotImplementedError
+        else:
+            self.provider_name = provider
 
     def generate_flood_depths(self, **kwargs):
         raise NotImplementedError
-        return self.provider.generate_flood_depths(**kwargs)
 
-    def plot_flood_extents(self, timeout: int = 60, **kwargs) -> geemap.Map:
+    def view_flood_extents(self, timeout: int = 300, **kwargs) -> geemap.Map:
         """Plots the generated flood extents on a map together with the data the
         flood extents are generated from.
 
@@ -173,9 +183,16 @@ class FloodMap:
         geemap.Map
 
         """
-        return self.provider.plot_flood_extents(timeout=timeout, **kwargs)
+        if self.provider_name == "hydrafloods":
+            return self.provider.view_flood_extents(timeout=timeout, **kwargs)
+        if self.provider_name == "GFM":
+            raise NotImplementedError
 
     def export_data(self, **kwargs):
+        if not self._provider:
+            raise RuntimeError(
+                "FloodMap instance has no data to export, generate flood extents first before calling export_data"
+            )
         return self.provider.export_data(**kwargs)
 
 
