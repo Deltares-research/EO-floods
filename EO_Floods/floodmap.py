@@ -52,6 +52,7 @@ class FloodMap:
         self.datasets = _instantiate_datasets(datasets)
         if provider:
             self.provider_name = provider
+            self._provider = None
             log.info(f"Provider set as {provider}")
 
         log.info("Flood map object initialized")
@@ -181,11 +182,15 @@ class FloodMap:
 
         """
         if self.provider_name == "hydrafloods":
-            return self._provider.view_flood_extents(timeout=timeout, **kwargs)
+            return self.provider.view_flood_extents(timeout=timeout, **kwargs)
         if self.provider_name == "GFM":
             raise NotImplementedError
 
     def export_data(self, **kwargs):
+        if not self._provider:
+            raise RuntimeError(
+                "FloodMap instance has no data to export, generate flood extents first before calling export_data"
+            )
         return self.provider.export_data(**kwargs)
 
 
