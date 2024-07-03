@@ -52,8 +52,9 @@ class FloodMap:
         self.datasets = _instantiate_datasets(datasets)
         if provider:
             self.provider_name = provider
-            self._provider = None
+
             log.info(f"Provider set as {provider}")
+        self._provider = None
 
         log.info("Flood map object initialized")
 
@@ -71,6 +72,7 @@ class FloodMap:
 
     @property
     def provider(self):
+        """Property to fetch the provider object."""
         return self._provider
 
     def available_data(self):

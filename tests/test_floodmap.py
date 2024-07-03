@@ -9,7 +9,7 @@ from EO_Floods.dataset import Dataset
 from EO_Floods.providers.hydrafloods import HydraFloods
 
 
-def test_FloodMap_init():
+def test_init():
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -66,7 +66,7 @@ def test_view_data(flood_map):
 
 
 @pytest.mark.integration()
-def test_floodmap_workflow():
+def test_workflow():
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -82,7 +82,7 @@ def test_floodmap_workflow():
     assert isinstance(floodmap.provider.flood_extents["Landsat 8"], hf.Dataset)
 
 
-def test_floodmap_generate_flood_extents(flood_map, caplog):
+def test_generate_flood_extents(flood_map, caplog):
     flood_map.generate_flood_extents()
     assert len(flood_map.datasets) == 6
     assert "Sentinel-1" in [ds.name for ds in flood_map.datasets]
@@ -96,3 +96,11 @@ def test_floodmap_generate_flood_extents(flood_map, caplog):
         "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
         in caplog.text
     )
+
+
+def test_export_data(flood_map):
+    with pytest.raises(
+        RuntimeError,
+        match="FloodMap instance has no data to export, generate flood extents first before calling export_data",
+    ):
+        flood_map.export_data()
