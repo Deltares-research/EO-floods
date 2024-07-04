@@ -6,7 +6,7 @@ import geemap.foliumap as geemap
 
 from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
 from EO_Floods.utils import get_dates_in_time_range, dates_within_daterange
-from EO_Floods.providers import HydraFloods
+from EO_Floods.providers import HydraFloods, GFM
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -157,14 +157,20 @@ class FloodMap:
                 dates_within_daterange(
                     dates, start_date=self.start_date, end_date=self.end_date
                 )
-            self._provider.generate_flood_extents(dates)
+            self.provider.generate_flood_extents(dates)
         elif provider == "GFM":
             self.provider_name = "GFM"
             if datasets is not None and datasets != "Sentinel-1":
                 log.warning(
                     "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
                 )
-            raise NotImplementedError
+            self._provider = GFM(
+                start_date=self.start_date,
+                end_date=self.end_date,
+                geometry=self.geometry,
+            )
+            self.provider.generate_flood_extents()
+
         else:
             self.provider_name = provider
 

@@ -11,7 +11,7 @@ import ee
 import multiprocessing.pool
 from tabulate import tabulate
 
-from EO_Floods.dataset import Dataset, ImageryType, DATASETS
+from EO_Floods.providers.hydrafloods.dataset import Dataset, ImageryType, DATASETS
 from EO_Floods.utils import (
     coords_to_ee_geom,
     get_centroid,
