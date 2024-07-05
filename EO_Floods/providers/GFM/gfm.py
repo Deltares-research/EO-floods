@@ -39,12 +39,22 @@ class GFM(ProviderBase):
     def _create_aoi(self, geometry) -> str:
         payload = {
             "aoi_name": "flood_aoi",
-            "description": "area of interest for flood mapping",
             "user_id": self.user["client_id"],
+            "description": "area of interest for flood mapping",
             "geoJSON": geometry,
         }
-        header = {"Authorization": f"Bearer {self.user['access_token']}"}
-        r = requests.post(API_URL + "aoi/create", data=payload, headers=header)
+        print("payload: ", payload)
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.user["access_token"]),
+        }
+        print("header: ", headers)
+        r = requests.post(
+            API_URL + "aoi/create",
+            data=payload,
+            headers=headers,
+        )
         if r.status_code != 201:
             r.raise_for_status()
         log.info("Successfully uploaded geometry to GFM server")
