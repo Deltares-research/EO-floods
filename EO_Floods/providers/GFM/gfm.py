@@ -36,6 +36,23 @@ class GFM(ProviderBase):
             bbox=self.geometry,
         )
 
+    def available_data(self):
+        log.info("Retrieving GFM product information")
+        params = {
+            "time": "range",
+            "from": self.start_date + "T00:00:00",
+            "to": self.end_date + "T23:59:59",
+        }
+        r = requests.get(
+            API_URL + f"/aoi/{self.aoi_id}/products",
+            auth=BearerAuth(self.user["access_token"]),
+            params=params,
+        )
+        if r.status_code != 200:
+            r.raise_for_status()
+        dates = [product["product_time"] for product in r.json()["products"]]
+        print("For the following dates there is GFM data: ", dates)
+
     def generate_flood_extents(self):
         pass
 
