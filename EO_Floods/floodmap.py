@@ -12,7 +12,7 @@ from EO_Floods.providers import HydraFloods, GFM
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 log = logging.getLogger(__name__)
 
-PROVIDERS = ["hydrafloods", "GFM"]
+PROVIDERS = ["Hydrafloods", "GFM"]
 
 
 class FloodMap:
@@ -20,9 +20,9 @@ class FloodMap:
         self,
         start_date: str,
         end_date: str,
+        provider: str,
         geometry: List[float],
         datasets: Optional[List[str] | str] = None,
-        provider: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Flood map object for creating and exporting flood maps.
@@ -50,12 +50,23 @@ class FloodMap:
         )
         self.geometry = geometry
         self.datasets = _instantiate_datasets(datasets)
-        if provider:
-            self.provider_name = provider
-
-            log.info(f"Provider set as {provider}")
-        self._provider = None
-
+        if provider == "GFM":
+            self._provider = GFM(
+                start_date=start_date, end_date=end_date, geometry=geometry
+            )
+        elif provider == "Hydrafloods":
+            self._provider = HydraFloods(
+                datasets=self.datasets,
+                start_date=start_date,
+                end_date=end_date,
+                geometry=geometry,
+            )
+        else:
+            raise ValueError(
+                "Provider not given or recognized, choose from [GFM, Hydrafloods]"
+            )
+        self.provider_name = provider
+        log.info(f"Provider set as {provider}")
         log.info("Flood map object initialized")
 
     @property
@@ -80,16 +91,9 @@ class FloodMap:
         spatial resolution. The information contains the dataset name, the number
         of images, the timestamp of the images, and a quality score in percentage.
         """
+        return self.provider.available_data()
 
-        hf = HydraFloods(
-            geometry=self.geometry,
-            datasets=self.datasets,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        return hf.available_data()
-
-    def view_data(
+    def preview_data(
         self,
         datasets: Optional[List[str] | str] = None,
         dates: Optional[List[str] | str] = None,
@@ -117,67 +121,42 @@ class FloodMap:
         geemap.Map
             a geemap.Map instance to visualize in a jupyter notebook
         """
-        if dates:
-            dates_within_daterange(
-                dates=dates, start_date=self.start_date, end_date=self.end_date
-            )
-
-        if not datasets:
-            _datasets = self.datasets
-        else:
-            _datasets = _instantiate_datasets(datasets)
-        hf = HydraFloods(
-            geometry=self.geometry,
-            datasets=_datasets,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        return hf.view_data(zoom, dates, vis_params)
-
-    def generate_flood_extents(
-        self,
-        provider: str = "hydrafloods",
-        datasets: Optional[List[str] | str] = None,
-        dates: Optional[List[str] | str] = None,
-    ):
-        """Generates flood extents."""
-        if provider == "hydrafloods":
-            self.provider_name = "hydrafloods"
-            if datasets:
-                self.datasets = _instantiate_datasets(datasets=datasets)
-            self._provider = HydraFloods(
-                datasets=self.datasets,
-                start_date=self.start_date,
-                end_date=self.end_date,
-                geometry=self.geometry,
-            )
+        if self.provider_name == "Hydrafloods":
             if dates:
-                if isinstance(dates, str):
-                    dates = [dates]
                 dates_within_daterange(
-                    dates, start_date=self.start_date, end_date=self.end_date
+                    dates=dates, start_date=self.start_date, end_date=self.end_date
                 )
-            self.provider.generate_flood_extents(dates)
-        elif provider == "GFM":
-            self.provider_name = "GFM"
-            if datasets is not None and datasets != "Sentinel-1":
-                log.warning(
-                    "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
+
+            if datasets:
+                self._provider = HydraFloods(
+                    geometry=self.geometry,
+                    datasets=_instantiate_datasets(datasets),
+                    start_date=self.start_date,
+                    end_date=self.end_date,
                 )
-            self._provider = GFM(
-                start_date=self.start_date,
-                end_date=self.end_date,
-                geometry=self.geometry,
+            return self.provider.view_data(
+                zoom=zoom, dates=dates, vis_params=vis_params
             )
-            self.provider.generate_flood_extents()
+        log.warning("GFM does not support previewing data")
 
-        else:
-            self.provider_name = provider
+    def select_data(
+        self,
+        dates: Optional[List[str] | str] = None,
+        datasets: Optional[List[str]] = None,
+    ):
+        if dates:
+            if isinstance(dates, str):
+                dates = [dates]
+            dates_within_daterange(
+                dates, start_date=self.start_date, end_date=self.end_date
+            )
 
-    def generate_flood_depths(self, **kwargs):
-        raise NotImplementedError
+        if self.provider_name == "Hydrafloods":
+            self.provider.select_data(datasets=datasets, dates=dates)
+        if self.provider_name == "GFM":
+            self.provider.select_data(dates=dates)
 
-    def view_flood_extents(self, timeout: int = 300, **kwargs) -> geemap.Map:
+    def view_flood_extents(self, dates, timeout: int = 300, **kwargs) -> geemap.Map:
         """Plots the generated flood extents on a map together with the data the
         flood extents are generated from.
 

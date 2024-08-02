@@ -27,6 +27,7 @@ class GFM(ProviderBase):
         self.start_date: str = start_date
         self.end_date: str = end_date
         self.geometry: List[float] = geometry
+        self.products: dict = self._get_products()
 
     def view_data(self, layer: str = "observed_flood_extent") -> WMS_MapObject:
         return WMS_MapObject(
@@ -37,24 +38,16 @@ class GFM(ProviderBase):
         )
 
     def available_data(self):
-        log.info("Retrieving GFM product information")
-        params = {
-            "time": "range",
-            "from": self.start_date + "T00:00:00",
-            "to": self.end_date + "T23:59:59",
-        }
-        r = requests.get(
-            API_URL + f"/aoi/{self.aoi_id}/products",
-            auth=BearerAuth(self.user["access_token"]),
-            params=params,
-        )
-        if r.status_code != 200:
-            r.raise_for_status()
-        dates = [product["product_time"] for product in r.json()["products"]]
+        dates = [product["product_time"] for product in self.products["products"]]
         print("For the following dates there is GFM data: ", dates)
 
-    def generate_flood_extents(self):
-        pass
+    def select_data(self, dates: List[str]):
+        products = [
+            product for product in self.products if product["product_time"] in dates
+        ]
+        if not products:
+            raise ValueError(f"No data found for given date(s): {', '.join(dates)}")
+        self.products = products
 
     def _create_aoi(self, geometry) -> str:
         log.info("Uploading geometry to GFM server")
@@ -76,3 +69,19 @@ class GFM(ProviderBase):
         log.info("Successfully uploaded geometry to GFM server")
 
         return r.json().get("aoi_id")
+
+    def _get_products(self):
+        log.info("Retrieving GFM product information")
+        params = {
+            "time": "range",
+            "from": self.start_date + "T00:00:00",
+            "to": self.end_date + "T23:59:59",
+        }
+        r = requests.get(
+            API_URL + f"/aoi/{self.aoi_id}/products",
+            auth=BearerAuth(self.user["access_token"]),
+            params=params,
+        )
+        if r.status_code != 200:
+            r.raise_for_status()
+        return r.json()["products"]
