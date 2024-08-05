@@ -38,7 +38,7 @@ class GFM(ProviderBase):
         )
 
     def available_data(self):
-        dates = [product["product_time"] for product in self.products["products"]]
+        dates = [product["product_time"] for product in self.products]
         print("For the following dates there is GFM data: ", dates)
 
     def select_data(self, dates: List[str]):
@@ -48,6 +48,19 @@ class GFM(ProviderBase):
         if not products:
             raise ValueError(f"No data found for given date(s): {', '.join(dates)}")
         self.products = products
+
+    def export_data(self):
+        log.info("Retrieving download link")
+
+        for product in self.products:
+            r = requests.get(
+                url=API_URL
+                + f"download/product/{product['product_id']}/{self.user['client_id']}",
+                auth=BearerAuth(self.user["access_token"]),
+            )
+            if r.status_code != 200:
+                r.raise_for_status()
+            print(r.json())
 
     def _create_aoi(self, geometry) -> str:
         log.info("Uploading geometry to GFM server")

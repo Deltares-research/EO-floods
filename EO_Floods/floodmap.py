@@ -174,10 +174,6 @@ class FloodMap:
             raise NotImplementedError
 
     def export_data(self, **kwargs):
-        if not self._provider:
-            raise RuntimeError(
-                "FloodMap instance has no data to export, generate flood extents first before calling export_data"
-            )
         return self.provider.export_data(**kwargs)
 
 
