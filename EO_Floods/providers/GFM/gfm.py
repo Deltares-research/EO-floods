@@ -39,7 +39,7 @@ class GFM(ProviderBase):
 
     def available_data(self):
         dates = [product["product_time"] for product in self.products]
-        print("For the following dates there is GFM data: ", dates)
+        log.info(f"For the following dates there is GFM data: {dates}")
 
     def select_data(self, dates: List[str]):
         products = [

@@ -9,12 +9,10 @@ dependencies:
   - numpy=1.26.0
   - pandas=2.2.1
   - pip:
-    - hydrafloods
-    - geemap
-    - pytest
-    - pydantic_settings
-    - mock
-    - tabulate
-
-
-
+      - hydrafloods
+      - geemap
+      - pytest
+      - pytest-mock
+      - pydantic_settings
+      - mock
+      - tabulate
