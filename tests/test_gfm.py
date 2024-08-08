@@ -39,7 +39,7 @@ def test_GFM(caplog, capsys, mocker):
     with pytest.raises(
         ValueError, match="No data found for given date\(s\): 03-04-1995"
     ):
-        gfm.select_data(dates=["03-04-1995"])
+        gfm.select_data(dates="03-04-1995")
 
 
 def test_GFM_auth(mocker, capsys):

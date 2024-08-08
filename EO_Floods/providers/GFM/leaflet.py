@@ -37,6 +37,7 @@ class WMS_MapObject:
         centroid = get_centroid(self.bbox)
         m = Map(basemap=basemaps.CartoDB.Positron, center=centroid, zoom=9)
         m.add(self.wms)
+        m.add(self.get_slider())
         return m
 
     def get_slider(self):

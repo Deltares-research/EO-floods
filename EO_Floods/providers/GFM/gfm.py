@@ -30,12 +30,13 @@ class GFM(ProviderBase):
         self.products: dict = self._get_products()
 
     def view_data(self, layer: str = "observed_flood_extent") -> WMS_MapObject:
-        return WMS_MapObject(
+        wms_map = WMS_MapObject(
             start_date=self.start_date,
             end_date=self.end_date,
             layers=layer,
             bbox=self.geometry,
         )
+        return wms_map
 
     def available_data(self):
         dates = [product["product_time"] for product in self.products]
