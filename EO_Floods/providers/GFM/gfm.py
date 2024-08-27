@@ -36,7 +36,7 @@ class GFM(ProviderBase):
             layers=layer,
             bbox=self.geometry,
         )
-        return wms_map
+        return wms_map.get_map()
 
     def available_data(self):
         dates = [product["product_time"] for product in self.products]

@@ -1,4 +1,4 @@
-from ipyleaflet import Map, WMSLayer, basemaps
+from ipyleaflet import Map, WMSLayer, basemaps, WidgetControl
 from traitlets import Unicode
 from ipywidgets import SelectionSlider
 
@@ -33,18 +33,22 @@ class WMS_MapObject:
         self.end_date = end_date
         self.bbox = bbox
 
-    def map(self):
+    def get_map(self):
         centroid = get_centroid(self.bbox)
-        m = Map(basemap=basemaps.CartoDB.Positron, center=centroid, zoom=9)
+        m = Map(basemap=basemaps.OpenStreetMap.Mapnik, center=centroid, zoom=9)
         m.add(self.wms)
-        m.add(self.get_slider())
+        # m.add(self.get_slider())
+        self.slider = self._get_slider()
+        self.slider.observe(self._update_wms, "value")
+        slider_cntrl = WidgetControl(widget=self.slider, position="bottomright")
+
+        m.add(slider_cntrl)
         return m
 
-    def get_slider(self):
+    def _get_slider(self):
         time_options = get_dates_in_time_range(self.start_date, self.end_date)
-        self.slider = SelectionSlider(description="Time:", options=time_options)
-        self.slider.observe(self.update_wms, "value")
-        return self.slider
+        slider = SelectionSlider(description="Time:", options=time_options)
+        return slider
 
-    def update_wms(self, change):
+    def _update_wms(self, change):
         self.wms.time = self.slider.value
