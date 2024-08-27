@@ -1,8 +1,8 @@
-from ipyleaflet import Map, WMSLayer, basemaps, WidgetControl
-from traitlets import Unicode
-from ipywidgets import SelectionSlider
-
 from typing import List
+
+from ipyleaflet import Map, WidgetControl, WMSLayer, basemaps
+from ipywidgets import SelectionSlider
+from traitlets import Unicode
 
 from EO_Floods.utils import get_centroid, get_dates_in_time_range
 
@@ -37,11 +37,9 @@ class WMS_MapObject:
         centroid = get_centroid(self.bbox)
         m = Map(basemap=basemaps.OpenStreetMap.Mapnik, center=centroid, zoom=9)
         m.add(self.wms)
-        # m.add(self.get_slider())
         self.slider = self._get_slider()
         self.slider.observe(self._update_wms, "value")
         slider_cntrl = WidgetControl(widget=self.slider, position="bottomright")
-
         m.add(slider_cntrl)
         return m
 
