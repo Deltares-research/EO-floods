@@ -1,11 +1,14 @@
+"""Global Flood Monitor Provider class."""
+
+from __future__ import annotations
+
 import logging
-from typing import List
 
 import requests
 
 from EO_Floods.providers import ProviderBase
 from EO_Floods.providers.GFM.auth import BearerAuth, GFM_authenticate
-from EO_Floods.providers.GFM.leaflet import WMS_MapObject
+from EO_Floods.providers.GFM.leaflet import WMS_Map
 from EO_Floods.utils import coords_to_geojson
 
 log = logging.getLogger(__name__)
@@ -13,24 +16,55 @@ API_URL = "https://api.gfm.eodc.eu/v2/"
 
 
 class GFM(ProviderBase):
+    """Provider class for retrieving and processing GFM data."""
+
     def __init__(
         self,
         start_date: str,
         end_date: str,
-        geometry: List[float],
+        geometry: list[float],
         *,
-        email=None,
-        pwd=None,
-    ):
+        email: str | None = None,
+        pwd: str | None = None,
+    ) -> None:
+        """Instantiate a GFM provider object.
+
+        Parameters
+        ----------
+        start_date : str
+            start date of the period to retrieve flood data for
+        end_date : str
+            end date  of the period to retrieve flood data for
+        geometry : list[float]
+            bounding box in [xmin, ymin, xmax, ymax] format
+        email : _type_, optional
+            email of the GFM user account, by default None
+        pwd : _type_, optional
+            password of the GFM user account, by default None
+
+        """
         self.user: dict = GFM_authenticate(email, pwd)
         self.aoi_id: str = self._create_aoi(geometry=coords_to_geojson(geometry))
         self.start_date: str = start_date
         self.end_date: str = end_date
-        self.geometry: List[float] = geometry
+        self.geometry: list[float] = geometry
         self.products: dict = self._get_products()
 
-    def view_data(self, layer: str = "observed_flood_extent") -> WMS_MapObject:
-        wms_map = WMS_MapObject(
+    def view_data(self, layer: str = "observed_flood_extent") -> WMS_Map:
+        """View the data for the given period and geometry.
+
+        Parameters
+        ----------
+        layer : str, optional
+            name of the data layer, by default "observed_flood_extent"
+
+        Returns
+        -------
+        WMS_Map
+            a ipyleaflet map object wrapped in a custom map class.
+
+        """
+        wms_map = WMS_Map(
             start_date=self.start_date,
             end_date=self.end_date,
             layers=layer,
@@ -38,32 +72,42 @@ class GFM(ProviderBase):
         )
         return wms_map.get_map()
 
-    def available_data(self):
+    def available_data(self) -> None:
+        """Show the available data for the given time period and geometry."""
         dates = [product["product_time"] for product in self.products]
-        log.info(f"For the following dates there is GFM data: {dates}")
+        log.info("For the following dates there is GFM data: %s", dates)
 
-    def select_data(self, dates: List[str]):
-        products = [
-            product for product in self.products if product["product_time"] in dates
-        ]
+    def select_data(self, dates: list[str]) -> None:
+        """Select data by supplying a list of timestamps.
+
+        Parameters
+        ----------
+        dates : list[str]
+            a list of timestamps that should match at least one of the timestamps given with the available_data method
+
+        """
+        products = [product for product in self.products if product["product_time"] in dates]
         if not products:
-            raise ValueError(f"No data found for given date(s): {', '.join(dates)}")
+            err_msg = f"No data found for given date(s): {', '.join(dates)}"
+            raise ValueError(err_msg)
         self.products = products
 
-    def export_data(self):
+    def export_data(self) -> None:
+        """Retrieve a download link for downloading the GFM data."""
         log.info("Retrieving download link")
 
         for product in self.products:
             r = requests.get(
-                url=API_URL
-                + f"download/product/{product['product_id']}/{self.user['client_id']}",
+                url=API_URL + f"download/product/{product['product_id']}/{self.user['client_id']}",
                 auth=BearerAuth(self.user["access_token"]),
+                timeout=300,
             )
-            if r.status_code != 200:
+            if r.status_code != 200:  # noqa: PLR2004
                 r.raise_for_status()
-            print(r.json())
+            link = r.json()
+            log.info("Image: %s, download link: %s", product["product_time"], link)
 
-    def _create_aoi(self, geometry) -> str:
+    def _create_aoi(self, geometry: list[float]) -> str:
         log.info("Uploading geometry to GFM server")
         payload = {
             "aoi_name": "flood_aoi",
@@ -76,15 +120,16 @@ class GFM(ProviderBase):
             API_URL + "/aoi/create",
             json=payload,
             auth=BearerAuth(self.user["access_token"]),
+            timeout=120,
         )
 
-        if r.status_code != 201:
+        if r.status_code != 201:  # noqa: PLR2004
             r.raise_for_status()
         log.info("Successfully uploaded geometry to GFM server")
 
         return r.json().get("aoi_id")
 
-    def _get_products(self):
+    def _get_products(self) -> dict:
         log.info("Retrieving GFM product information")
         params = {
             "time": "range",
@@ -95,7 +140,8 @@ class GFM(ProviderBase):
             API_URL + f"/aoi/{self.aoi_id}/products",
             auth=BearerAuth(self.user["access_token"]),
             params=params,
+            timeout=120,
         )
-        if r.status_code != 200:
+        if r.status_code != 200:  # noqa: PLR2004
             r.raise_for_status()
         return r.json()["products"]
