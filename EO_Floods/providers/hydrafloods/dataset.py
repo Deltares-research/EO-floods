@@ -1,9 +1,10 @@
 import logging
-from pydantic import BaseModel
 from enum import Enum
-import hydrafloods as hf
-import ee
 from typing import List
+
+import ee
+import hydrafloods as hf
+from pydantic import BaseModel
 
 from EO_Floods.utils import calc_quality_score
 
@@ -123,6 +124,7 @@ class HydraFloodsDataset:
             Start date of the time window of interest (YYY-mm-dd).
         end_date : str
             End date of the time window of interest (YYY-mm-dd).
+
         """
         HF_datasets = {
             "Sentinel-1": hf.Sentinel1,
@@ -135,23 +137,25 @@ class HydraFloodsDataset:
         self.name: str = dataset.name
         self.short_name: str = dataset.short_name
         self.imagery_type: ImageryType = dataset.imagery_type
-        self.default_flood_extent_algorithm: str = (
-            dataset.default_flood_extent_algorithm
-        )
+        self.default_flood_extent_algorithm: str = dataset.default_flood_extent_algorithm
         self.region = region
         self.qa_band = dataset.qa_band
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.providers = dataset.providers
         self.obj: hf.Dataset = HF_datasets[dataset.name](
-            region=region, start_time=start_date, end_time=end_date, **kwargs
+            region=region,
+            start_time=start_date,
+            end_time=end_date,
+            **kwargs,
         )
         logger.debug(f"Initialized hydrafloods dataset for {self.name}")
 
-    def _calc_quality_score(self) -> List[float]:
-        if (
-            self.name in ["VIIRS", "MODIS"]
-        ):  # these datasets consist of global images, need to be clipped first before reducing
+    def quality_score(self) -> List[float]:
+        if self.name in [
+            "VIIRS",
+            "MODIS",
+        ]:  # these datasets consist of global images, need to be clipped first before reducing
             self.obj.apply_func(func=lambda x: x.clip(self.region), inplace=True)
         self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
         qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
