@@ -7,8 +7,8 @@ import logging
 import requests
 
 from EO_Floods.providers import ProviderBase
-from EO_Floods.providers.GFM.auth import BearerAuth, GFM_authenticate
-from EO_Floods.providers.GFM.leaflet import WMS_Map
+from EO_Floods.providers.GFM.auth import BearerAuth, authenticate_gfm
+from EO_Floods.providers.GFM.leaflet import WMSMap
 from EO_Floods.utils import coords_to_geojson
 
 log = logging.getLogger(__name__)
@@ -43,14 +43,14 @@ class GFM(ProviderBase):
             password of the GFM user account, by default None
 
         """
-        self.user: dict = GFM_authenticate(email, pwd)
+        self.user: dict = authenticate_gfm(email, pwd)
         self.aoi_id: str = self._create_aoi(geometry=coords_to_geojson(geometry))
         self.start_date: str = start_date
         self.end_date: str = end_date
         self.geometry: list[float] = geometry
         self.products: dict = self._get_products()
 
-    def view_data(self, layer: str = "observed_flood_extent") -> WMS_Map:
+    def view_data(self, layer: str = "observed_flood_extent") -> WMSMap:
         """View the data for the given period and geometry.
 
         Parameters
@@ -64,7 +64,7 @@ class GFM(ProviderBase):
             a ipyleaflet map object wrapped in a custom map class.
 
         """
-        wms_map = WMS_Map(
+        wms_map = WMSMap(
             start_date=self.start_date,
             end_date=self.end_date,
             layers=layer,
@@ -86,6 +86,9 @@ class GFM(ProviderBase):
             a list of timestamps that should match at least one of the timestamps given with the available_data method
 
         """
+        if not isinstance(dates, list):
+            err_msg = f"dates should be a list of dates, not {type(dates)}"
+            raise ValueError(err_msg)
         products = [product for product in self.products if product["product_time"] in dates]
         if not products:
             err_msg = f"No data found for given date(s): {', '.join(dates)}"

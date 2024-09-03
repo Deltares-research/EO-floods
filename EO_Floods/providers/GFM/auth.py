@@ -60,8 +60,8 @@ def authenticate_gfm(email: str | None = None, pwd: str | None = None, *, from_e
 
 
 def _get_credentials_from_env() -> str:
-    email = os.environ.get("GFM_EMAIL")
-    pwd = os.environ.get("GFM_PWD")
+    email = os.getenv("GFM_EMAIL")
+    pwd = os.getenv("GFM_PWD")
     if not email or not pwd:
         err_msg = "Environment variables ['GFM_EMAIL', 'GFM_PWD'] not set."
         raise ValueError(err_msg)
