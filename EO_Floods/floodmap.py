@@ -1,29 +1,35 @@
-from typing import List, Optional
+"""General API for flood maps in EO-Floods."""
+
+from __future__ import annotations
+
 import logging
 import sys
+from typing import TYPE_CHECKING, Any
 
-import geemap.foliumap as geemap
+from EO_Floods.providers import GFM, HydraFloods
+from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
+from EO_Floods.utils import dates_within_daterange, get_dates_in_time_range
 
-from EO_Floods.dataset import DATASETS, Dataset
-from EO_Floods.utils import get_dates_in_time_range, dates_within_daterange
-from EO_Floods.providers import HydraFloods
-
+if TYPE_CHECKING:
+    import geemap.foliumap as geemap
+    import ipyleaflet
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 log = logging.getLogger(__name__)
 
-PROVIDERS = ["hydrafloods", "GFM"]
+PROVIDERS = ["Hydrafloods", "GFM"]
 
 
 class FloodMap:
+    """General API for flood maps in EO-Floods."""
+
     def __init__(
         self,
         start_date: str,
         end_date: str,
-        geometry: List[float],
-        datasets: Optional[List[str] | str] = None,
-        provider: Optional[str] = None,
-        **kwargs,
+        provider: str,
+        geometry: list[float],
+        datasets: list[str] | str | None = None,
     ) -> None:
         """Flood map object for creating and exporting flood maps.
 
@@ -42,63 +48,72 @@ class FloodMap:
             MODIS, and VIIRS. By default None
         provider : providers, optional
             The dataset provider, by default none
+
         """
         self.start_date = start_date
         self.end_date = end_date
         self.dates = get_dates_in_time_range(
-            start_date_str=start_date, end_date_str=end_date
+            start_date_str=start_date,
+            end_date_str=end_date,
         )
         self.geometry = geometry
         self.datasets = _instantiate_datasets(datasets)
-        if provider:
-            self.provider_name = provider
-
-            log.info(f"Provider set as {provider}")
-        self._provider = None
-
+        if provider == "GFM":
+            self._provider = GFM(
+                start_date=start_date,
+                end_date=end_date,
+                geometry=geometry,
+            )
+        elif provider == "Hydrafloods":
+            self._provider = HydraFloods(
+                datasets=self.datasets,
+                start_date=start_date,
+                end_date=end_date,
+                geometry=geometry,
+            )
+        else:
+            err_msg = "Provider not given or recognized, choose from [GFM, Hydrafloods]"
+            raise ValueError(err_msg)
+        self.provider_name = provider
+        log.info("Provider set as %s", provider)
         log.info("Flood map object initialized")
 
     @property
-    def provider_name(self):
+    def provider_name(self) -> str:
+        """Returns name of the provider."""
         return self._provider_name
 
     @provider_name.setter
-    def provider_name(self, _provider):
+    def provider_name(self, _provider: str) -> None:
         if _provider not in PROVIDERS:
-            raise ValueError(
-                f"Given provider '{_provider}' not supported, choose from: {' ,'.join(PROVIDERS)}"
-            )
+            err_msg = f"Given provider '{_provider}' not supported, choose from: {' ,'.join(PROVIDERS)}"
+            raise ValueError(err_msg)
         self._provider_name = _provider
 
     @property
-    def provider(self):
+    def provider(self) -> GFM | HydraFloods:
         """Property to fetch the provider object."""
         return self._provider
 
-    def available_data(self):
-        """Prints information of the chosen datasets for the given temporal and
-        spatial resolution. The information contains the dataset name, the number
-        of images, the timestamp of the images, and a quality score in percentage.
+    def available_data(self) -> None:
+        """Print information of the selected datasets.
+
+        The information contains the dataset name, the number
+        of images, the timestamp of the images, and a quality score in percentage of the selected datasets.
         """
+        self.provider.available_data()
 
-        hf = HydraFloods(
-            geometry=self.geometry,
-            datasets=self.datasets,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        return hf.available_data()
-
-    def view_data(
+    def preview_data(
         self,
-        datasets: Optional[List[str] | str] = None,
-        dates: Optional[List[str] | str] = None,
+        datasets: list[str] | str | None = None,
+        dates: list[str] | str | None = None,
         zoom: int = 8,
-        vis_params: dict = {},
-    ) -> geemap.Map:
-        """View data on a geemap instance. This can be used to visually check if
-        the quality of the data is sufficient for further processing to flood maps.
-        The data can be filtered based on date and dataset name.
+        **kwargs: dict[str, Any],
+    ) -> geemap.Map | None:
+        """View data on a geemap instance.
+
+        This can be used to visually check if the quality of the data is sufficient for further processing to
+        flood maps. The data can be filtered based on date and dataset name.
 
         Parameters
         ----------
@@ -109,100 +124,100 @@ class FloodMap:
             A subselection of dates to , by default None
         zoom : int, optional
             zoom level, by default 8
-        vis_params : dict, optional
-            A dictionary describing the visual parameters for each dataset, by default {}
+        kwargs: dict,
+            keyword arguments passed to the hydrafloods preview data method.
 
         Returns
         -------
         geemap.Map
             a geemap.Map instance to visualize in a jupyter notebook
+
+        """
+        if self.provider_name == "Hydrafloods":
+            if dates:
+                dates_within_daterange(
+                    dates=dates,
+                    start_date=self.start_date,
+                    end_date=self.end_date,
+                )
+
+            if datasets:
+                self._provider = HydraFloods(
+                    geometry=self.geometry,
+                    datasets=_instantiate_datasets(datasets),
+                    start_date=self.start_date,
+                    end_date=self.end_date,
+                )
+            return self.provider.view_data(
+                zoom=zoom,
+                dates=dates,
+                **kwargs,
+            )
+        log.warning("GFM does not support previewing data")
+        return None
+
+    def select_data(
+        self,
+        dates: list[str] | str | None = None,
+        datasets: list[str] | None = None,
+    ) -> None:
+        """Select data and datasets from the available datasets based on the timestamp of the data.
+
+        Parameters
+        ----------
+        dates : list[str] | str | None, optional
+            the dates to select, by default None
+        datasets : list[str] | None, optional
+            The datasets to select. Only applicable for the hydrafloods provider, by default None
+
         """
         if dates:
+            if isinstance(dates, str):
+                dates = [dates]
             dates_within_daterange(
-                dates=dates, start_date=self.start_date, end_date=self.end_date
-            )
-
-        if not datasets:
-            _datasets = self.datasets
-        else:
-            _datasets = _instantiate_datasets(datasets)
-        hf = HydraFloods(
-            geometry=self.geometry,
-            datasets=_datasets,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-        return hf.view_data(zoom, dates, vis_params)
-
-    def generate_flood_extents(
-        self,
-        provider: str = "hydrafloods",
-        datasets: Optional[List[str] | str] = None,
-        dates: Optional[List[str] | str] = None,
-    ):
-        """Generates flood extents."""
-        if provider == "hydrafloods":
-            self.provider_name = "hydrafloods"
-            if datasets:
-                self.datasets = _instantiate_datasets(datasets=datasets)
-            self._provider = HydraFloods(
-                datasets=self.datasets,
+                dates,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                geometry=self.geometry,
             )
-            if dates:
-                if isinstance(dates, str):
-                    dates = [dates]
-                dates_within_daterange(
-                    dates, start_date=self.start_date, end_date=self.end_date
-                )
-            self._provider.generate_flood_extents(dates)
-        elif provider == "GFM":
-            self.provider_name = "GFM"
-            if datasets is not None and datasets != "Sentinel-1":
-                log.warning(
-                    "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
-                )
-            raise NotImplementedError
-        else:
-            self.provider_name = provider
 
-    def generate_flood_depths(self, **kwargs):
-        raise NotImplementedError
+        if self.provider_name == "Hydrafloods":
+            self.provider.select_data(datasets=datasets, dates=dates)
+        if self.provider_name == "GFM":
+            self.provider.select_data(dates=dates)
 
-    def view_flood_extents(self, timeout: int = 300, **kwargs) -> geemap.Map:
-        """Plots the generated flood extents on a map together with the data the
-        flood extents are generated from.
+    def view_flood_extents(self, timeout: int = 300, **kwargs: dict[Any]) -> geemap.Map | ipyleaflet.Map:
+        """Plot the generated flood extents on a map.
 
+        Parameters
+        ----------
         timeout: int, optional
             The time in seconds it takes to raise a timeout error
+        kwargs: dict[Any]
+            keyword arguments that are passed to the view_flood_extents HydraFloods method.
 
         Returns
         -------
-        geemap.Map
+        geemap.Map or ipyleaflet.Map
 
         """
         if self.provider_name == "hydrafloods":
             return self.provider.view_flood_extents(timeout=timeout, **kwargs)
         if self.provider_name == "GFM":
-            raise NotImplementedError
+            return self.provider.view_data()
+        return None
 
-    def export_data(self, **kwargs):
-        if not self._provider:
-            raise RuntimeError(
-                "FloodMap instance has no data to export, generate flood extents first before calling export_data"
-            )
+    def export_data(self, **kwargs: dict) -> None:
+        """Export the flood data."""
         return self.provider.export_data(**kwargs)
 
 
-def _instantiate_datasets(datasets: Optional[List[str] | str]) -> List[Dataset]:
+def _instantiate_datasets(datasets: list[str] | str) -> list[Dataset]:
     if isinstance(datasets, str):
-        if datasets not in DATASETS.keys():
-            raise ValueError(f"Dataset '{datasets}' not recognized")
+        if datasets not in DATASETS:
+            err_msg = f"Dataset '{datasets}' not recognized"
+            raise ValueError(err_msg)
         return [DATASETS[datasets]]
 
-    elif isinstance(datasets, list):
+    if isinstance(datasets, list):
         return [DATASETS[dataset] for dataset in datasets]
-    else:
-        return [dataset for dataset in DATASETS.values()]
+    return list(DATASETS.values())

@@ -22,3 +22,14 @@ dynamic = ["version", "description"]
 
 [project.urls]
 Home = "https://github.com/Deltares-research/EO-floods"
+
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+[tool.ruff]
+line-length = 120
+exclude = ["tests/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

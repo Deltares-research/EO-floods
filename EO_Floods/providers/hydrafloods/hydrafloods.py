@@ -1,24 +1,26 @@
-from typing import List, Optional
-import warnings
-import datetime
 import logging
+import multiprocessing.pool
 import re
+import warnings
+from typing import List, Optional
 
+import ee
+import geemap.foliumap as geemap
 import hydrafloods as hf
 from hydrafloods.geeutils import batch_export
-import geemap.foliumap as geemap
-import ee
-import multiprocessing.pool
 from tabulate import tabulate
 
-from EO_Floods.dataset import Dataset, ImageryType, DATASETS
+from EO_Floods.providers import ProviderBase
+from EO_Floods.providers.hydrafloods.dataset import (
+    Dataset,
+    HydraFloodsDataset,
+    ImageryType,
+)
 from EO_Floods.utils import (
     coords_to_ee_geom,
-    get_centroid,
     date_parser,
-    calc_quality_score,
+    get_centroid,
 )
-from EO_Floods.providers import ProviderBase
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +134,23 @@ class HydraFloods(ProviderBase):
                 )
         return Map
 
-    def generate_flood_extents(
+    def select_data(
+        self, datasets: Optional[List[str]] = None, dates: Optional[List[str]] = None
+    ):
+        if datasets:
+            self.datasets = [
+                dataset for dataset in self.datasets if dataset.name in datasets
+            ]
+        if dates:
+            for dataset in self.datasets:
+                # Filter the dataset on dates
+                if len(dates) > 1:
+                    filter = _multiple_dates_filter(dates)
+                else:
+                    filter = _date_filter(dates[0])
+                dataset.obj.filter(filter, inplace=True)
+
+    def _generate_flood_extents(
         self, dates: Optional[List[str]] = None, clip_ocean: bool = True
     ) -> None:
         """Generates flood extents on the selected datasets and for the given temporal
@@ -206,7 +224,9 @@ class HydraFloods(ProviderBase):
     def generate_flood_depths(self):
         pass
 
-    def view_flood_extents(self, timeout: int = 60, zoom: int = 8) -> geemap.Map:
+    def view_flood_extents(
+        self, dates, timeout: int = 60, zoom: int = 8, clip_ocean: bool = True
+    ) -> geemap.Map:
         """View the flood extents on a geemap.Map object.
 
         Parameters
@@ -223,43 +243,11 @@ class HydraFloods(ProviderBase):
         """
 
         if not hasattr(self, "flood_extents"):
-            raise RuntimeError(
-                "generate_flood_extents() needs to be called before calling this method"
-            )
-
-        def _plot_flood_extents(zoom: int):
-            flood_extent_vis_params = {
-                "bands": ["water"],
-                "min": 0,
-                "max": 1,
-                "palette": ["#C0C0C0", "#000080"],
-            }
-            map = self.view_data()
-            for ds_name in self.flood_extents:
-                img_col = self.flood_extents[ds_name].collection
-                n_images = img_col.size().getInfo()
-                for n in range(n_images):
-                    img = ee.Image(img_col.toList(n_images).get(n))
-                    # date = datetime.datetime.fromtimestamp(
-                    #     img.get("system:time_start").getInfo()
-                    # ).strftime("%Y-%m-%d HH:MM:SS")
-                    map.addLayer(
-                        img,
-                        vis_params=flood_extent_vis_params,
-                        name=f"{ds_name}  flood extent",
-                    )
-
-                max_extent_img = self.flood_extents[ds_name].collection.max()
-                map.add_layer(
-                    max_extent_img,
-                    vis_params=flood_extent_vis_params,
-                    name=f"{ds_name} max flood extent",
-                )
-            return map
+            self._generate_flood_extents(dates=dates, clip_ocean=clip_ocean)
 
         try:
             with multiprocessing.pool.ThreadPool() as pool:
-                return_value = pool.apply_async(_plot_flood_extents, (zoom,)).get(
+                return_value = pool.apply_async(self._plot_flood_extents, (zoom,)).get(
                     timeout=timeout
                 )
         except multiprocessing.TimeoutError:
@@ -275,9 +263,11 @@ class HydraFloods(ProviderBase):
         self,
         export_type: str = "toDrive",
         include_base_data: bool = False,
-        folder: str = None,
+        folder: Optional[str] = None,
         ee_asset_path: str = "",
-        scale: int | float = None,
+        clip_ocean: bool = True,
+        dates: Optional[List[str]] = None,
+        scale: Optional[int | float] = None,
         **kwargs,
     ):
         """Exports the data generated in the floodmapping workflow to a Google Drive
@@ -301,33 +291,31 @@ class HydraFloods(ProviderBase):
         if export_type == "toDrive":
             folder = "EO_Floods"
 
-        if hasattr(self, "flood_extents"):
-            for ds in self.flood_extents.keys():
-                logger.info(
-                    f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
-                )
-
-                if not scale:
-                    scale = (
-                        self.flood_extents[ds]
-                        .collection.first()
-                        .select("water")
-                        .projection()
-                        .nominalScale(),
-                    )
-                batch_export(
-                    collection=self.flood_extents[ds].collection,
-                    collection_asset=ee_asset_path,
-                    export_type=export_type,
-                    folder=folder,
-                    suffix=f"{ds.replace(' ', '_')}_flood_extent",
-                    scale=scale,
-                    **kwargs,
-                )
-        else:
-            raise RuntimeError(
-                "First call generate_flood_extents() before calling export_data()"
+        if not hasattr(self, "flood_extents"):
+            self._generate_flood_extents(dates, clip_ocean=clip_ocean)
+        for ds in self.flood_extents.keys():
+            logger.info(
+                f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
             )
+
+            if not scale:
+                scale = (
+                    self.flood_extents[ds]
+                    .collection.first()
+                    .select("water")
+                    .projection()
+                    .nominalScale(),
+                )
+            batch_export(
+                collection=self.flood_extents[ds].collection,
+                collection_asset=ee_asset_path,
+                export_type=export_type,
+                folder=folder,
+                suffix=f"{ds.replace(' ', '_')}_flood_extent",
+                scale=scale,
+                **kwargs,
+            )
+
         if include_base_data:
             for dataset in self.datasets:
                 logger.info(
@@ -348,6 +336,36 @@ class HydraFloods(ProviderBase):
                     **kwargs,
                 )
 
+    def _plot_flood_extents(self, zoom: int):
+        flood_extent_vis_params = {
+            "bands": ["water"],
+            "min": 0,
+            "max": 1,
+            "palette": ["#C0C0C0", "#000080"],
+        }
+        map = self.view_data()
+        for ds_name in self.flood_extents:
+            img_col = self.flood_extents[ds_name].collection
+            n_images = img_col.size().getInfo()
+            for n in range(n_images):
+                img = ee.Image(img_col.toList(n_images).get(n))
+                # date = datetime.datetime.fromtimestamp(
+                #     img.get("system:time_start").getInfo()
+                # ).strftime("%Y-%m-%d HH:MM:SS")
+                map.addLayer(
+                    img,
+                    vis_params=flood_extent_vis_params,
+                    name=f"{ds_name}  flood extent",
+                )
+
+            max_extent_img = self.flood_extents[ds_name].collection.max()
+            map.add_layer(
+                max_extent_img,
+                vis_params=flood_extent_vis_params,
+                name=f"{ds_name} max flood extent",
+            )
+        return map
+
 
 def _date_filter(date: str) -> ee.Filter:
     d = ee.Date(date_parser(date))
@@ -366,65 +384,3 @@ def _multiple_dates_filter(dates: list[str]):
 def _filter_collection_by_dates(date: str, dataset):
     img = dataset.obj.collection.filter(_date_filter(date))
     return img
-
-
-class HydraFloodsDataset:
-    def __init__(
-        self,
-        dataset: Dataset,
-        region: ee.geometry.Geometry,
-        start_date: str,
-        end_date: str,
-        **kwargs,
-    ):
-        """Class for initializing Hydrafloods datasets.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            EO_Floods.Dataset object containing information on the dataset and configuration
-            for processing.
-        region : ee.geometry.Geometry
-            Earth Engine geometry that represents the area of interest.
-        start_date : str
-            Start date of the time window of interest (YYY-mm-dd).
-        end_date : str
-            End date of the time window of interest (YYY-mm-dd).
-        """
-        HF_datasets = {
-            "Sentinel-1": hf.Sentinel1,
-            "Sentinel-2": hf.Sentinel2,
-            "Landsat 7": hf.Landsat7,
-            "Landsat 8": hf.Landsat8,
-            "VIIRS": hf.Viirs,
-            "MODIS": hf.Modis,
-        }
-        self.name: str = dataset.name
-        self.short_name: str = dataset.short_name
-        self.imagery_type: ImageryType = dataset.imagery_type
-        self.default_flood_extent_algorithm: str = (
-            dataset.default_flood_extent_algorithm
-        )
-        self.region = region
-        self.qa_band = dataset.qa_band
-        self.algorithm_params: dict = dataset.algorithm_params
-        self.visual_params: dict = dataset.visual_params
-        self.providers = dataset.providers
-        self.obj: hf.Dataset = HF_datasets[dataset.name](
-            region=region, start_time=start_date, end_time=end_date, **kwargs
-        )
-        logger.debug(f"Initialized hydrafloods dataset for {self.name}")
-
-        # col_size = self.obj.n_images
-        # self.obj.collection = _mosaic_same_date_images(
-        #     self.obj.collection, size=col_size
-        # )
-
-    def _calc_quality_score(self) -> List[float]:
-        if (
-            self.name in ["VIIRS", "MODIS"]
-        ):  # these datasets consist of global images, need to be clipped first before reducing
-            self.obj.apply_func(func=lambda x: x.clip(self.region), inplace=True)
-        self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
-        qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
-        return [round(score, 2) for score in qa_score]

@@ -4,8 +4,7 @@ import ee
 import geemap
 import pytest
 from EO_Floods.providers.hydrafloods import HydraFloodsDataset, HydraFloods
-from EO_Floods.utils import date_parser
-from EO_Floods.dataset import DATASETS
+from EO_Floods.providers.hydrafloods.dataset import DATASETS
 
 
 def hydrafloods_instance(dataset_list: list) -> HydraFloods:
