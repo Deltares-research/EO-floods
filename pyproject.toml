@@ -29,3 +29,7 @@ select = ["ALL"]
 
 [tool.ruff]
 line-length = 120
+exclude = ["tests/*.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
