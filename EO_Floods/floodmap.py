@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from EO_Floods.providers import GFM, HydraFloods
 from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
@@ -185,14 +185,14 @@ class FloodMap:
         if self.provider_name == "GFM":
             self.provider.select_data(dates=dates)
 
-    def view_flood_extents(self, timeout: int = 300, **kwargs: dict[str, Any]) -> geemap.Map | ipyleaflet.Map:
+    def view_flood_extents(self, timeout: int = 300, **kwargs: dict[Any]) -> geemap.Map | ipyleaflet.Map:
         """Plot the generated flood extents on a map.
 
         Parameters
         ----------
         timeout: int, optional
             The time in seconds it takes to raise a timeout error
-        kwargs: dict[str, Any]
+        kwargs: dict[Any]
             keyword arguments that are passed to the view_flood_extents HydraFloods method.
 
         Returns
@@ -206,11 +206,12 @@ class FloodMap:
             return self.provider.view_data()
         return None
 
-    def export_data(self, **kwargs):
+    def export_data(self, **kwargs: dict) -> None:
+        """Export the flood data."""
         return self.provider.export_data(**kwargs)
 
 
-def _instantiate_datasets(datasets: Optional[List[str] | str]) -> List[Dataset]:
+def _instantiate_datasets(datasets: list[str] | str) -> list[Dataset]:
     if isinstance(datasets, str):
         if datasets not in DATASETS:
             err_msg = f"Dataset '{datasets}' not recognized"
