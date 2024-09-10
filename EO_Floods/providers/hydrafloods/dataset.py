@@ -1,6 +1,9 @@
+"""Dataset data classes for hydrafloods provider."""
+
+from __future__ import annotations
+
 import logging
 from enum import Enum
-from typing import List
 
 import ee
 import hydrafloods as hf
@@ -11,12 +14,12 @@ from EO_Floods.utils import calc_quality_score
 logger = logging.getLogger(__name__)
 
 
-class ImageryType(Enum):
+class ImageryType(Enum):  # noqa: D101
     SAR = "SAR"
     OPTICAL = "optical"
 
 
-class Dataset(BaseModel):
+class Dataset(BaseModel):  # noqa: D101
     name: str
     short_name: str
     default_flood_extent_algorithm: str
@@ -26,7 +29,7 @@ class Dataset(BaseModel):
     qa_band: str
 
 
-class Sentinel1(Dataset):
+class Sentinel1(Dataset):  # noqa: D101
     name: str = "Sentinel-1"
     short_name: str = "S1"
     imagery_type: ImageryType = ImageryType.SAR
@@ -37,7 +40,7 @@ class Sentinel1(Dataset):
     providers: list = ["GFM", "Hydrafloods"]
 
 
-class Sentinel2(Dataset):
+class Sentinel2(Dataset):  # noqa: D101
     name: str = "Sentinel-2"
     short_name: str = "S2"
     imagery_type: ImageryType = ImageryType.OPTICAL
@@ -48,7 +51,7 @@ class Sentinel2(Dataset):
     providers: list = ["Hydrafloods"]
 
 
-class Landsat7(Dataset):
+class Landsat7(Dataset):  # noqa: D101
     name: str = "Landsat 7"
     short_name: str = "L7"
     imagery_type: ImageryType = ImageryType.OPTICAL
@@ -59,7 +62,7 @@ class Landsat7(Dataset):
     providers: list = ["Hydrafloods"]
 
 
-class Landsat8(Dataset):
+class Landsat8(Dataset):  # noqa: D101
     name: str = "Landsat 8"
     short_name: str = "L8"
     imagery_type: ImageryType = ImageryType.OPTICAL
@@ -70,7 +73,7 @@ class Landsat8(Dataset):
     providers: list = ["Hydrafloods"]
 
 
-class VIIRS(Dataset):
+class VIIRS(Dataset):  # noqa: D101
     name: str = "VIIRS"
     short_name: str = "VIIRS"
     imagery_type: ImageryType = ImageryType.OPTICAL
@@ -81,7 +84,7 @@ class VIIRS(Dataset):
     providers: list = ["Hydrafloods"]
 
 
-class MODIS(Dataset):
+class MODIS(Dataset):  # noqa: D101
     name: str = "MODIS"
     short_name: str = "MODIS"
     imagery_type: ImageryType = ImageryType.OPTICAL
@@ -103,14 +106,16 @@ DATASETS = {
 
 
 class HydraFloodsDataset:
+    """Wrapper for Hydrafloods dataset data classes."""
+
     def __init__(
         self,
         dataset: Dataset,
         region: ee.geometry.Geometry,
         start_date: str,
         end_date: str,
-        **kwargs,
-    ):
+        **kwargs: dict[str],
+    ) -> None:
         """Class for initializing Hydrafloods datasets.
 
         Parameters
@@ -124,6 +129,8 @@ class HydraFloodsDataset:
             Start date of the time window of interest (YYY-mm-dd).
         end_date : str
             End date of the time window of interest (YYY-mm-dd).
+        kwargs: dict
+            key word arguments to pass to hydrafloods dataset intialization.
 
         """
         HF_datasets = {
@@ -149,9 +156,20 @@ class HydraFloodsDataset:
             end_time=end_date,
             **kwargs,
         )
-        logger.debug(f"Initialized hydrafloods dataset for {self.name}")
+        logger.debug("Initialized hydrafloods dataset for %s", self.name)
 
-    def quality_score(self) -> List[float]:
+    def quality_score(self) -> list[float]:
+        """Calculate a quality score for satellite images.
+
+        Quality score is the percentage of unmasked pixels present in the whole image.
+
+
+        Returns
+        -------
+        list[float]
+           list of quality scores for every image in the dataset.
+
+        """
         if self.name in [
             "VIIRS",
             "MODIS",
