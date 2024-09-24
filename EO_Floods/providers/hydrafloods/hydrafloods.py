@@ -123,7 +123,8 @@ class HydraFloods(ProviderBase):
         m = geemap.Map(center=self.centroid, zoom=zoom)
         if isinstance(dates, str):
             dates = [dates]
-
+        if vis_params is None:
+            vis_params = {}
         for dataset in self.datasets:
             if dates is None:
                 dates = dataset.obj.dates
@@ -225,7 +226,7 @@ class HydraFloods(ProviderBase):
 
     def view_flood_extents(
         self,
-        dates: list[str],
+        dates: list[str] | None = None,
         zoom: int = 8,
         timeout: int = 60,
         *,
@@ -235,7 +236,7 @@ class HydraFloods(ProviderBase):
 
         Parameters
         ----------
-        dates : list
+        dates : list, optional
             list of dates to view the data for
         zoom : int, optional
             Zoom level of the map window, by default 8
@@ -259,8 +260,7 @@ class HydraFloods(ProviderBase):
             with multiprocessing.pool.ThreadPool() as pool:
                 return_value = pool.apply_async(self._plot_flood_extents, (zoom,)).get(timeout=timeout)
         except multiprocessing.TimeoutError as exc:
-            err_msg = "Plotting flood extents has timed out, increase the time out threshold or plot a smaller \
-                 selection of your data"
+            err_msg = "Plotting flood extents has timed out, increase the time out threshold or plot a smaller selection of your data"
             raise TimeoutError(err_msg) from exc
         return return_value
 
@@ -334,14 +334,14 @@ class HydraFloods(ProviderBase):
                     **kwargs,
                 )
 
-    def _plot_flood_extents(self) -> geemap.Map:
+    def _plot_flood_extents(self, zoom: int) -> geemap.Map:
         flood_extent_vis_params = {
             "bands": ["water"],
             "min": 0,
             "max": 1,
             "palette": ["#C0C0C0", "#000080"],
         }
-        m = self.view_data()
+        m = self.view_data(zoom=zoom)
         for ds_name in self.flood_extents:
             img_col = self.flood_extents[ds_name].collection
             n_images = img_col.size().getInfo()

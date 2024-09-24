@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
+from typing import TYPE_CHECKING
 
-import ee
 import hydrafloods as hf
 from pydantic import BaseModel
 
 from EO_Floods.utils import calc_quality_score
 
+if TYPE_CHECKING:
+    import ee
 logger = logging.getLogger(__name__)
 
 
@@ -133,7 +135,7 @@ class HydraFloodsDataset:
             key word arguments to pass to hydrafloods dataset intialization.
 
         """
-        HF_datasets = {
+        hf_datasets = {
             "Sentinel-1": hf.Sentinel1,
             "Sentinel-2": hf.Sentinel2,
             "Landsat 7": hf.Landsat7,
@@ -150,7 +152,7 @@ class HydraFloodsDataset:
         self.algorithm_params: dict = dataset.algorithm_params
         self.visual_params: dict = dataset.visual_params
         self.providers = dataset.providers
-        self.obj: hf.Dataset = HF_datasets[dataset.name](
+        self.obj: hf.Dataset = hf_datasets[dataset.name](
             region=region,
             start_time=start_date,
             end_time=end_date,
