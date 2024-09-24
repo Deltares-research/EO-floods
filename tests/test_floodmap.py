@@ -1,11 +1,10 @@
 import pytest
-import geemap
+import geemap.foliumap as geemap
 import logging
 import hydrafloods as hf
-from unittest.mock import patch
-
-from EO_Floods.floodmap import FloodMap
-from EO_Floods.providers.hydrafloods.dataset import Dataset
+import re
+from EO_Floods.floodmap import FloodMap, _instantiate_datasets
+from EO_Floods.providers.hydrafloods.dataset import Dataset, Sentinel1, VIIRS, DATASETS
 from EO_Floods.providers.hydrafloods import HydraFloods
 
 
@@ -15,7 +14,7 @@ def test_init():
         end_date="2023-04-30",
         geometry=[4.221067, 51.949474, 4.471006, 52.073727],
         datasets=["Sentinel-1", "Landsat 8"],
-        provider="hydrafloods",
+        provider="Hydrafloods",
     )
     assert isinstance(floodmap, FloodMap)
     assert isinstance(floodmap.datasets[0], Dataset)
@@ -28,9 +27,9 @@ def test_init():
             end_date="2023-04-30",
             geometry=[4.221067, 51.949474, 4.471006, 52.073727],
             datasets="sentinel",
-            provider="hydrafloods",
+            provider="Hydrafloods",
         )
-    with pytest.raises(ValueError, match=r"Given provider 'copernicus' not supported"):
+    with pytest.raises(ValueError, match=re.escape(r"Provider not given or recognized, choose from [GFM, Hydrafloods]")):
         floodmap = FloodMap(
             start_date="2023-04-01",
             end_date="2023-04-30",
@@ -40,20 +39,20 @@ def test_init():
         )
 
 
-@patch("builtins.print")
-def test_available_data(mocked_print, flood_map):
+
+def test_available_data(caplog, flood_map):
+    caplog.set_level(logging.INFO)
     flood_map.available_data()
-    print_args = mocked_print.mock_calls[0][1][0]
-    assert "Sentinel-1" in print_args
-    assert "Sentinel-2" in print_args
-    assert "Landsat 7" in print_args
-    assert "Landsat 8" in print_args
-    assert "VIIRS" in print_args
-    assert "MODIS" in print_args
+    assert "Sentinel-1" in caplog.text
+    assert "Sentinel-2" in caplog.text
+    assert "Landsat 7" in caplog.text
+    assert "Landsat 8" in caplog.text
+    assert "VIIRS" in caplog.text
+    assert "MODIS" in caplog.text
 
 
-def test_view_data(flood_map):
-    viewer = flood_map.view_data(
+def test_preview_data(flood_map):
+    viewer = flood_map.preview_data(
         datasets=["Sentinel-1"],
         dates=["2022-10-05 01:25:51.000", "2022-10-05 01:25:26.000"],
     )
@@ -66,41 +65,37 @@ def test_view_data(flood_map):
 
 
 @pytest.mark.integration()
-def test_workflow():
+def test_workflow(caplog, mocker):
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
         geometry=[4.221067, 51.949474, 4.471006, 52.073727],
         datasets="Landsat 8",
-        provider="hydrafloods",
+        provider="Hydrafloods",
     )
     floodmap.available_data()
-    preview = floodmap.view_data()
-    assert isinstance(preview, geemap.foliumap.Map)
-    floodmap.generate_flood_extents()
+    preview = floodmap.preview_data()
+    assert isinstance(preview, geemap.Map)
+    data_view = floodmap.view_flood_extents()
+    assert isinstance(data_view, geemap.Map)
     assert hasattr(floodmap.provider, "flood_extents")
-    assert isinstance(floodmap.provider.flood_extents["Landsat 8"], hf.Dataset)
+    mock_batch_export = mocker.patch("EO_Floods.providers.hydrafloods.hydrafloods.batch_export")
+    floodmap.export_data()
+    mock_batch_export.assert_called()
 
 
-def test_generate_flood_extents(flood_map, caplog):
-    flood_map.generate_flood_extents()
-    assert len(flood_map.datasets) == 6
-    assert "Sentinel-1" in [ds.name for ds in flood_map.datasets]
-    assert hasattr(flood_map, "_provider")
-    assert isinstance(flood_map._provider, HydraFloods)
+def test_instantiate_datasets():
+    datasets = _instantiate_datasets(datasets=["Sentinel-1", "VIIRS"])
+    assert isinstance(datasets, list)
+    assert len(datasets) == 2
+    assert isinstance(datasets[0], Sentinel1)
+    assert isinstance(datasets[1], VIIRS)
 
-    caplog.set_level(logging.WARNING)
-    with pytest.raises(NotImplementedError):
-        flood_map.generate_flood_extents(provider="GFM", datasets=["Landsat 7"])
-    assert (
-        "GFM only provides data based on Sentinel-1, datasets argument is therefore ignored"
-        in caplog.text
-    )
+    dataset = _instantiate_datasets(datasets="Sentinel-1")
+    assert len(dataset) == 1
+    assert isinstance(dataset, list)
+    assert isinstance(dataset[0], Sentinel1)
 
-
-def test_export_data(flood_map):
-    with pytest.raises(
-        RuntimeError,
-        match="FloodMap instance has no data to export, generate flood extents first before calling export_data",
-    ):
-        flood_map.export_data()
+    err_msg = f"Dataset 'fakedataset' not recognized. Supported datasets are: {','.join(list(DATASETS.keys()))}"
+    with pytest.raises(ValueError, match=err_msg):
+        _instantiate_datasets(datasets=["fakedataset"])

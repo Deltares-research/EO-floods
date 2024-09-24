@@ -1,7 +1,8 @@
 from mock import patch
 import hydrafloods as hf
 import ee
-import geemap
+
+import geemap.foliumap as geemap
 import pytest
 import logging
 from EO_Floods.providers.hydrafloods import HydraFloodsDataset, HydraFloods
@@ -23,6 +24,22 @@ def test_Hydrafloods_init():
     assert isinstance(hydrafloods_provider.datasets[0], HydraFloodsDataset)
     assert isinstance(hydrafloods_provider.datasets[0].obj, hf.Sentinel1)
     assert isinstance(hydrafloods_provider.geometry, ee.geometry.Geometry)
+
+
+def test_available_data(caplog):
+    caplog.set_level(logging.INFO)
+    hf_provider = hydrafloods_instance(["Sentinel-1", "Landsat 7"])
+    hf_provider.available_data()
+    assert "Sentinel-1" in caplog.text
+    assert "Landsat 7" in caplog.text
+    assert "Quality score" in caplog.text
+    assert "GFM, Hydrafloods" in caplog.text
+
+
+def test_view_data():
+    hydrafloods_provider = hydrafloods_instance(["Sentinel-1"])
+    m = hydrafloods_provider.view_data()
+    assert isinstance(m, geemap.Map)
 
 
 
@@ -59,8 +76,8 @@ def test_view_flood_extents():
     hf_provider = hydrafloods_instance(["Sentinel-1"])
     
     flood_map = hf_provider.view_flood_extents()
-    assert isinstance(flood_map, geemap.foliumap.Map)
-    with pytest.raises(
+    assert isinstance(flood_map, geemap.Map)
+    with pytest.raises( 
         TimeoutError,
         match="Plotting flood extents has timed out, increase the time out threshold or plot a smaller selection of your data",
     ):
