@@ -177,10 +177,9 @@ class HydraFloods(ProviderBase):
         for dataset in self.datasets:
             log.info("Generating flood extents for %s dataset", dataset.name)
             if dataset.obj.n_images < 1:
-                warn_msg = f"{dataset.name} has no images for date range {self.start_date} - {self.end_date}."
+                warn_msg = f"{dataset.name} has no images for date range {self.start_date}/{self.end_date}."
                 log.warning(
                     warn_msg,
-                    UserWarning,
                 )
                 continue
             if dates:

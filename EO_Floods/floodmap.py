@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import logging
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from EO_Floods.providers import GFM, HydraFloods
 from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
 from EO_Floods.utils import dates_within_daterange, get_dates_in_time_range
+
+warnings.filterwarnings("ignore")
 
 if TYPE_CHECKING:
     import geemap.foliumap as geemap
