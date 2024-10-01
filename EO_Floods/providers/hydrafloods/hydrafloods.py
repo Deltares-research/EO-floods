@@ -260,7 +260,10 @@ class HydraFloods(ProviderBase):
             with multiprocessing.pool.ThreadPool() as pool:
                 return_value = pool.apply_async(self._plot_flood_extents, (zoom,)).get(timeout=timeout)
         except multiprocessing.TimeoutError as exc:
-            err_msg = "Plotting flood extents has timed out, increase the time out threshold or plot a smaller selection of your data"
+            err_msg = (
+                "Plotting flood extents has timed out, increase the time out"
+                " threshold or plot a smaller selection of your data"
+            )
             raise TimeoutError(err_msg) from exc
         return return_value
 
