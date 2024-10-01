@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import logging
 import sys
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from EO_Floods.providers import GFM, HydraFloods
 from EO_Floods.providers.hydrafloods.dataset import DATASETS, Dataset
 from EO_Floods.utils import dates_within_daterange, get_dates_in_time_range
+
+warnings.filterwarnings("ignore")
 
 if TYPE_CHECKING:
     import geemap.foliumap as geemap
@@ -200,7 +203,7 @@ class FloodMap:
         geemap.Map or ipyleaflet.Map
 
         """
-        if self.provider_name == "hydrafloods":
+        if self.provider_name == "Hydrafloods":
             return self.provider.view_flood_extents(timeout=timeout, **kwargs)
         if self.provider_name == "GFM":
             return self.provider.view_data()
@@ -214,10 +217,17 @@ class FloodMap:
 def _instantiate_datasets(datasets: list[str] | str) -> list[Dataset]:
     if isinstance(datasets, str):
         if datasets not in DATASETS:
-            err_msg = f"Dataset '{datasets}' not recognized"
-            raise ValueError(err_msg)
+            _dataset_error(dataset_name=datasets)
         return [DATASETS[datasets]]
 
     if isinstance(datasets, list):
+        for dataset in datasets:
+            if dataset not in DATASETS:
+                _dataset_error(dataset_name=dataset)
         return [DATASETS[dataset] for dataset in datasets]
     return list(DATASETS.values())
+
+
+def _dataset_error(dataset_name: str) -> None:
+    err_msg = f"Dataset '{dataset_name}' not recognized. Supported datasets are: {','.join(list(DATASETS.keys()))}"
+    raise ValueError(err_msg)

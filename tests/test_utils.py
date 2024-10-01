@@ -89,7 +89,7 @@ def test_dates_within_range():
 
     dates.insert(0, "1995-03-10")
     with pytest.raises(
-        ValueError, match=f"'{dates[0]}' not in {start_date}-{end_date} daterange"
+        ValueError, match="Start date '1996-03-10' must occur before end date '1996-03-12'"
     ):
         dates_within_daterange(dates=dates, start_date=start_date, end_date=end_date)
 
