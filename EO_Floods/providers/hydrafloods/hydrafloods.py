@@ -367,7 +367,7 @@ class HydraFloods(ProviderBase):
 def _date_filter(date: str) -> ee.Filter:
     d = ee.Date(date_parser(date))
     # If timestamp contains h:m:s filter on seconds
-    if re.findall(r"(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$", date):
+    if re.findall(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})", date):
         return ee.Filter.date(d, d.advance(1, "second"))
     # else by day
     return ee.Filter.date(d, d.advance(1, "day"))

@@ -36,7 +36,7 @@ class Sentinel1(Dataset):  # noqa: D101
     short_name: str = "S1"
     imagery_type: ImageryType = ImageryType.SAR
     default_flood_extent_algorithm: str = "edge_otsu"
-    algorithm_params: dict = {"edge_otsu": {"band": "VV"}}
+    algorithm_params: dict = {"edge_otsu": {"band": "VV", "invert": True, "initial_threshold": -16}}
     visual_params: dict = {"min": -25, "max": 0, "bands": ["VV"]}
     qa_band: str = "VV"
     providers: list = ["GFM", "Hydrafloods"]
