@@ -88,7 +88,7 @@ class GFM(ProviderBase):
         """
         if not isinstance(dates, list):
             err_msg = f"dates should be a list of dates, not {type(dates)}"
-            raise ValueError(err_msg)
+            raise TypeError(err_msg)
         products = [product for product in self.products if product["product_time"] in dates]
         if not products:
             err_msg = f"No data found for given date(s): {', '.join(dates)}"
