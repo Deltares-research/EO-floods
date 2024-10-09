@@ -33,11 +33,12 @@ You can authenticate for the GFM API when you initialize a FloodMap instance wit
 
 ### Installing
 
-The current version is not pip installable yet. For now the package can be used by installing the conda environment from the environment.yml
+The current version is not pip installable yet. For now the package can be used by installing the conda environment from the environment.yml and do a developer install
 
 ```
 conda env create -f environment.yml
 conda activate EO-Floods
+pip install -e .
 ```
 
 ## Examples
