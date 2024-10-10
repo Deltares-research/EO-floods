@@ -350,14 +350,14 @@ class HydraFloods(ProviderBase):
             img_col = self.flood_extents[ds_name].collection
             n_images = img_col.size().getInfo()
             for n in range(n_images):
-                img = ee.Image(img_col.toList(n_images).get(n))
+                img = ee.Image(img_col.toList(n_images).get(n)).selfMask()
                 m.addLayer(
                     img,
                     vis_params=flood_extent_vis_params,
                     name=f"{ds_name}  flood extent",
                 )
 
-            max_extent_img = self.flood_extents[ds_name].collection.max()
+            max_extent_img = self.flood_extents[ds_name].collection.max().selfMask()
             m.add_layer(
                 max_extent_img,
                 vis_params=flood_extent_vis_params,
