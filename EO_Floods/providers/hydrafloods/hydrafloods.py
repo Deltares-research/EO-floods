@@ -363,6 +363,12 @@ class HydraFloods(ProviderBase):
                 vis_params=flood_extent_vis_params,
                 name=f"{ds_name} max flood extent",
             )
+        # Add JRC water occurrence as reference
+        m.add_layer(
+            ee.Image("JRC/GSW1_4/GlobalSurfaceWater"),
+            vis_params={"bands": ["occurrence"], "min": 0.0, "max": 100.0, "palette": ["ffffff", "ffbbbb", "0000ff"]},
+            name="JRC water occurrenceS",
+        )
         return _add_aoi_and_zoom_to_bounds(m, ee_geom=self.ee_geometry, bbox=self.bbox)
 
 
