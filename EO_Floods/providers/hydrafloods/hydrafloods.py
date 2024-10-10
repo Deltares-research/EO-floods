@@ -54,11 +54,12 @@ class HydraFloods(ProviderBase):
 
         """
         self.centroid = get_centroid(geometry)
-        self.geometry = coords_to_ee_geom(geometry)
+        self.ee_geometry = coords_to_ee_geom(geometry)
+        self.bbox = geometry
         self.start_date = start_date
         self.end_date = end_date
         self.initial_datasets = datasets
-        self.datasets = [HydraFloodsDataset(dataset, self.geometry, start_date, end_date) for dataset in datasets]
+        self.datasets = [HydraFloodsDataset(dataset, self.ee_geometry, start_date, end_date) for dataset in datasets]
 
     def available_data(self) -> None:
         """Information on the given datasets for the given temporal and spatial resolution.
@@ -93,10 +94,7 @@ class HydraFloods(ProviderBase):
         log.info(output)
 
     def view_data(
-        self,
-        zoom: int = 8,
-        dates: list[str] | str | None = None,
-        vis_params: dict | None = None,
+        self, zoom: int = 8, dates: list[str] | str | None = None, vis_params: dict | None = None, add_aoi: bool = True
     ) -> geemap.Map:
         """View data on a geemap instance.
 
@@ -113,6 +111,8 @@ class HydraFloods(ProviderBase):
             A subselection of dates to , by default None
         vis_params : dict, optional
             A dictionary describing the visual parameters for each dataset, by default {}
+        add_aoi: bool, optional
+            adds the area of interest as an outlined bounding box to the map
 
         Returns
         -------
@@ -138,6 +138,8 @@ class HydraFloods(ProviderBase):
                     ),  # If no vis_params are given take the default visual params for the dataset objects
                     name=f"{dataset.name} {date}",
                 )
+        if add_aoi:
+            return _add_aoi_and_zoom_to_bounds(m=m, ee_geom=self.ee_geometry, bbox=self.bbox)
         return m
 
     def select_data(self, datasets: list[str] | None = None, dates: list[str] | None = None) -> None:
@@ -192,7 +194,7 @@ class HydraFloods(ProviderBase):
                 log.info("Clipping image to country boundaries")
                 country_boundary = (
                     ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0")
-                    .filterBounds(self.geometry)
+                    .filterBounds(self.ee_geometry)
                     .first()
                     .geometry()
                 )
@@ -343,25 +345,39 @@ class HydraFloods(ProviderBase):
             "max": 1,
             "palette": ["#C0C0C0", "#000080"],
         }
-        m = self.view_data(zoom=zoom)
+        m = self.view_data(zoom=zoom, add_aoi=False)
         for ds_name in self.flood_extents:
             img_col = self.flood_extents[ds_name].collection
             n_images = img_col.size().getInfo()
             for n in range(n_images):
-                img = ee.Image(img_col.toList(n_images).get(n))
+                img = ee.Image(img_col.toList(n_images).get(n)).selfMask()
                 m.addLayer(
                     img,
                     vis_params=flood_extent_vis_params,
                     name=f"{ds_name}  flood extent",
                 )
 
-            max_extent_img = self.flood_extents[ds_name].collection.max()
+            max_extent_img = self.flood_extents[ds_name].collection.max().selfMask()
             m.add_layer(
                 max_extent_img,
                 vis_params=flood_extent_vis_params,
                 name=f"{ds_name} max flood extent",
             )
-        return m
+        # Add JRC water occurrence as reference
+        m.add_layer(
+            ee.Image("JRC/GSW1_4/GlobalSurfaceWater"),
+            vis_params={"bands": ["occurrence"], "min": 0.0, "max": 100.0, "palette": ["ffffff", "ffbbbb", "0000ff"]},
+            name="JRC water occurrenceS",
+        )
+        return _add_aoi_and_zoom_to_bounds(m, ee_geom=self.ee_geometry, bbox=self.bbox)
+
+
+def _add_aoi_and_zoom_to_bounds(m: geemap.Map, ee_geom: ee.geometry, bbox: list[float]) -> geemap.Map:
+    m.add_layer(
+        ee_object=ee.FeatureCollection(ee_geom).style(fillColor="00000000", color="red"), name="Area of interest"
+    )
+    m.zoom_to_bounds(bounds=bbox)
+    return m
 
 
 def _date_filter(date: str) -> ee.Filter:
