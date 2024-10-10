@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ipyleaflet import Map, WidgetControl, WMSLayer, basemaps
+from ipyleaflet import Map, Polygon, WidgetControl, WMSLayer, basemaps
 from ipywidgets import SelectionSlider
 from traitlets import Unicode
 
@@ -65,12 +65,16 @@ class WMSMap:
 
         """
         centroid = get_centroid(self.bbox)
-        m = Map(basemap=basemaps.OpenStreetMap.Mapnik, center=centroid, zoom=9)
+        m = Map(basemap=basemaps.OpenStreetMap.Mapnik, center=centroid)
         m.add(self.wms)
         self.slider = self._get_slider()
         self.slider.observe(self._update_wms, "value")
         slider_cntrl = WidgetControl(widget=self.slider, position="bottomright")
         m.add(slider_cntrl)
+        xmin, ymin, xmax, ymax = self.bbox
+        bbox = Polygon(locations=[(ymin, xmax), (ymax, xmax), (ymax, xmin), (ymin, xmin)], color="red", fill_opacity=0)
+        m.add(bbox)
+        m.fit_bounds(bounds=[[ymin, xmin], [ymax, xmax]])
         return m
 
     def _get_slider(self) -> SelectionSlider:
