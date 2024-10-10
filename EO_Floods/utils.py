@@ -13,12 +13,12 @@ log = logging.getLogger(__name__)
 
 def coords_to_ee_geom(coords: list) -> ee.geometry.Geometry:
     """Convert a list of xmin, ymin, xmax, ymax coords to an ee.Geometry."""
-    if len(coords) == 4: # noqa:PLR2004
+    if len(coords) == 4:  # noqa:PLR2004
         xmin, ymin, xmax, ymax = coords
-        if not -180 <= xmin <= 180 or not -180 <= xmax <= 180: # noqa:PLR2004
+        if not -180 <= xmin <= 180 or not -180 <= xmax <= 180:  # noqa:PLR2004
             err_msg = "X values are not within the longitudinal range"
             raise ValueError(err_msg)
-        if not -90 <= ymin <= 90 or not -90 <= ymax <= 90: # noqa:PLR2004
+        if not -90 <= ymin <= 90 or not -90 <= ymax <= 90:  # noqa:PLR2004
             err_msg = "Y values are not within the latitudinal range"
             raise ValueError(err_msg)
         return ee.Geometry.BBox(xmin, ymin, xmax, ymax)
@@ -118,8 +118,8 @@ def get_dates_in_time_range(start_date_str: str, end_date_str: str) -> list:
 
     """
     # Convert start and end date strings to datetime objects
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d") # noqa:DTZ007
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d") # noqa:DTZ007
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")  # noqa:DTZ007
+    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")  # noqa:DTZ007
 
     # Initialize an empty list to store the dates
     date_list = []
@@ -134,7 +134,9 @@ def get_dates_in_time_range(start_date_str: str, end_date_str: str) -> list:
 
 
 def calc_quality_score(
-    image: ee.Image, band: str, geom: ee.Geometry | None = None,
+    image: ee.Image,
+    band: str,
+    geom: ee.Geometry | None = None,
 ) -> ee.Image:
     """Calculate a quality score for an ee.Image.
 
@@ -158,15 +160,22 @@ def calc_quality_score(
     masked_pixel_count = (
         image.select(band)
         .reduceRegion(
-            reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10,
+            reducer=ee.Reducer.count(),
+            geometry=geom,
+            scale=30,
+            maxPixels=1e10,
         )
         .get(band)
     )
+    # TODO rasterize geom and get total pixel count
     total_pixel_count = (
         image.select(band)
         .unmask()
         .reduceRegion(
-            reducer=ee.Reducer.count(), geometry=geom, scale=30, maxPixels=1e10,
+            reducer=ee.Reducer.count(),
+            geometry=geom,
+            scale=30,
+            maxPixels=1e10,
         )
         .get(band)
     )
