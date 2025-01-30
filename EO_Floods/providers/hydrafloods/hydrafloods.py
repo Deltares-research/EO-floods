@@ -70,31 +70,39 @@ class HydraFloods(ProviderBase):
             List of dictionaries containing information on the datasets.
 
         """
-        line0 = f"{'='*70}\n"
+        line0 = f"{'=' * 70}\n"
         output = ""
         for dataset in self.datasets:
+            n_images = dataset.obj.n_images
             output += line0
             output += f"Dataset name: {dataset.name}\n"
-            n_images = dataset.obj.n_images
+
             output += f"Number of images: {n_images}\n"
             output += f"Dataset ID: {dataset.obj.asset_id}\n"
             output += f"Providers: {', '.join(dataset.providers)}\n\n"
 
             if n_images > 0:
                 dates = dataset.obj.dates
-                qa_scores = dataset.quality_score()
-                table_list = [[x, y] for x, y in zip(dates, qa_scores)]
+                q_scores = dataset.quality_score()
+                table_list = [[x, y] for x, y in zip(dates, q_scores)]
                 table = tabulate(
                     table_list,
                     headers=["Timestamp", "Quality score (%)"],
                     tablefmt="orgtbl",
                 )
                 output += table + "\n\n"
+            else:
+                output += "No images where found for the set time period.\n\n"
 
         log.info(output)
 
     def view_data(
-        self, zoom: int = 8, dates: list[str] | str | None = None, vis_params: dict | None = None, add_aoi: bool = True
+        self,
+        zoom: int = 8,
+        dates: list[str] | str | None = None,
+        vis_params: dict | None = None,
+        *,
+        add_aoi: bool = True,
     ) -> geemap.Map:
         """View data on a geemap instance.
 
@@ -308,7 +316,7 @@ class HydraFloods(ProviderBase):
         if not hasattr(self, "flood_extents"):
             self._generate_flood_extents(dates, clip_ocean=clip_ocean)
         for ds in self.flood_extents:
-            log_msg = f"Exporting {ds} flood extents {export_type[:2]+' '+export_type[2:]}"
+            log_msg = f"Exporting {ds} flood extents {export_type[:2] + ' ' + export_type[2:]}"
             log.info(log_msg)
 
             if not scale:
@@ -325,7 +333,7 @@ class HydraFloods(ProviderBase):
 
         if include_base_data:
             for dataset in self.datasets:
-                log_msg = f"Exporting {dataset.name} {export_type[:2]+' '+export_type[2:]}"
+                log_msg = f"Exporting {dataset.name} {export_type[:2] + ' ' + export_type[2:]}"
                 log.info(log_msg)
                 batch_export(
                     collection=dataset.obj.collection,
@@ -374,7 +382,8 @@ class HydraFloods(ProviderBase):
 
 def _add_aoi_and_zoom_to_bounds(m: geemap.Map, ee_geom: ee.geometry, bbox: list[float]) -> geemap.Map:
     m.add_layer(
-        ee_object=ee.FeatureCollection(ee_geom).style(fillColor="00000000", color="red"), name="Area of interest"
+        ee_object=ee.FeatureCollection(ee_geom).style(fillColor="00000000", color="red"),
+        name="Area of interest",
     )
     m.zoom_to_bounds(bounds=bbox)
     return m

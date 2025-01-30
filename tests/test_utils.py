@@ -3,7 +3,6 @@ import hydrafloods as hf
 
 from EO_Floods.utils import (
     coords_to_ee_geom,
-    calc_quality_score,
     dates_within_daterange,
 )
 
@@ -33,44 +32,6 @@ def test_coords_to_geom():
         geom = coords_to_ee_geom(coords)
 
 
-class TestCalcQualityScore:
-    STARTDATE = "2022-10-01"
-    ENDDATE = "2022-10-30"
-    REGION = coords_to_ee_geom([67.740187, 27.712453, 68.104933, 28.000935])
-
-    def test_l8_qa(self):
-        l8 = hf.Landsat8(
-            region=self.REGION, start_time=self.STARTDATE, end_time=self.ENDDATE
-        )
-        l8.apply_func(calc_quality_score, inplace=True, band="swir1")
-        qa_scores = l8.collection.aggregate_array("qa_score").getInfo()
-        assert len(qa_scores) == l8.n_images
-
-    def test_l7_qa(self):
-        l7 = hf.Landsat7(self.REGION, self.STARTDATE, self.ENDDATE)
-        l7.apply_func(calc_quality_score, inplace=True, band="swir1")
-        qa_scores = l7.collection.aggregate_array("qa_score").getInfo()
-        assert len(qa_scores) == l7.n_images
-
-    def test_s1_qa(self):
-        s1 = hf.Sentinel1(self.REGION, self.STARTDATE, self.ENDDATE)
-        s1.apply_func(calc_quality_score, inplace=True, band="VV")
-        qa_scores = s1.collection.aggregate_array("qa_score").getInfo()
-        assert len(qa_scores) == s1.n_images
-
-    def test_modis_qa(self):
-        modis = hf.Modis(self.REGION, self.STARTDATE, self.ENDDATE)
-        modis.apply_func(lambda x: x.clip(self.REGION), inplace=True)
-        modis.apply_func(calc_quality_score, inplace=True, band="swir1")
-        qa_scores = modis.collection.aggregate_array("qa_score").getInfo()
-        assert len(qa_scores) == modis.n_images
-
-    def test_viirs(self):
-        viirs = hf.Viirs(self.REGION, self.STARTDATE, self.ENDDATE)
-        viirs.apply_func(lambda x: x.clip(self.REGION), inplace=True)
-        viirs.apply_func(calc_quality_score, inplace=True, band="swir1")
-        qa_scores = viirs.collection.aggregate_array("qa_score").getInfo()
-        assert len(qa_scores) == viirs.n_images
 
 
 def test_dates_within_range():

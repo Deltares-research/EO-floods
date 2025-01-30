@@ -4,15 +4,11 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING
 
+import ee
 import hydrafloods as hf
 from pydantic import BaseModel
 
-from EO_Floods.utils import calc_quality_score
-
-if TYPE_CHECKING:
-    import ee
 logger = logging.getLogger(__name__)
 
 
@@ -177,6 +173,55 @@ class HydraFloodsDataset:
             "MODIS",
         ]:  # these datasets consist of global images, need to be clipped first before reducing
             self.obj.apply_func(func=lambda x: x.clip(self.region), inplace=True)
-        self.obj.apply_func(func=calc_quality_score, inplace=True, band=self.qa_band)
-        qa_score = self.obj.collection.aggregate_array("qa_score").getInfo()
-        return [round(score, 2) for score in qa_score]
+        self.obj.apply_func(func=self._calculate_quality_score, inplace=True, band=self.qa_band, geom=self.region)
+        q_score = self.obj.collection.aggregate_array("q_score").getInfo()
+        return [round(score, 2) for score in q_score]
+
+    @staticmethod
+    def _calculate_quality_score(
+        image: ee.Image,
+        band: str,
+        geom: ee.Geometry | None = None,
+    ) -> ee.Image:
+        """Calculate a quality score for an ee.Image.
+
+        Parameters
+        ----------
+        image : ee.Image
+            image object
+        band : str
+            band name of the image
+        geom : Optional[ee.Geometry], optional
+            Earth engine geometry to reduce by, by default None
+
+        Returns
+        -------
+        ee.Image
+            image with quality score
+
+        """
+        if not geom:
+            geom = ee.Geometry(ee.Image(image).select(band).geometry())
+        masked_pixel_count = (
+            image.select(band)
+            .reduceRegion(
+                reducer=ee.Reducer.count(),
+                geometry=geom,
+                scale=30,
+                maxPixels=1e10,
+            )
+            .get(band)
+        )
+        total_pixel_count = (
+            image.select(band)
+            .unmask()
+            .reduceRegion(
+                reducer=ee.Reducer.count(),
+                geometry=geom,
+                scale=30,
+                maxPixels=1e10,
+            )
+            .get(band)
+        )
+        q_score = ee.Number(masked_pixel_count).divide(total_pixel_count).multiply(100)
+        return image.set({"q_score": q_score})
