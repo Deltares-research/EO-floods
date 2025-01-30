@@ -169,7 +169,7 @@ class HydraFloods(ProviderBase):
                 f = _multiple_dates_filter(dates) if len(dates) > 1 else _date_filter(dates[0])
                 dataset.obj.filter(f, inplace=True)
 
-    def _generate_flood_extents(self, dates: list[str] | None = None, *, clip_ocean: bool = True) -> None:
+    def _generate_flood_extents(self, dates: list[str] | None = None, *, clip_ocean: bool = True, mask_permanent_water: bool = True) -> None:
         """Generate flood extents for the given temporal and spatial resolution.
 
         Parameters
@@ -181,9 +181,15 @@ class HydraFloods(ProviderBase):
             influence the edge otsu algorithm. The clipping is done by using country
             borders, so be aware when your region of interest is across country
             boundaries. By default True.
+         mask_permanent_water: boolIf set to True this will mask permanent water. Permanent water is defined as 75%
+            occurrence in JRC Global Surface water. By default True
 
+        Returns
+            None
         """
         flood_extents = {}
+        jrc_water_occurrence = ee.image.Image("JRC/GSW1_4/GlobalSurfaceWater")
+        permanent_water_mask = jrc_water_occurrence.select(["occurrence"]).gte(50).eq(0)
         for dataset in self.datasets:
             log.info("Generating flood extents for %s dataset", dataset.name)
             if dataset.obj.n_images < 1:
@@ -226,6 +232,10 @@ class HydraFloods(ProviderBase):
             # Invert values of flood extent so that water=1, land=0
             flood_extent = flood_extent.apply_func(lambda x: x.eq(0).copyProperties(x, ["system:time_start"]))
 
+            # Mask out permanent water
+            if mask_permanent_water:
+                flood_extent = flood_extent.apply_func(lambda x: x.updateMask(permanent_water_mask))
+
             flood_extents[dataset.name] = flood_extent
         self.flood_extents = flood_extents
 
@@ -240,6 +250,7 @@ class HydraFloods(ProviderBase):
         timeout: int = 60,
         *,
         clip_ocean: bool = False,
+        mask_permanent_water: bool = True,
     ) -> geemap.Map:
         """View the flood extents on a geemap.Map object.
 
@@ -254,6 +265,8 @@ class HydraFloods(ProviderBase):
             and can thus be given an timeout.
         clip_ocean: bool
             Images will be clipped by country and ocean borders
+        mask_permanent_water: boolIf set to True this will mask permanent water. Permanent water is defined as 75% 
+            occurrence in JRC Global Surface water. By default True
 
         Returns
         -------
@@ -263,7 +276,7 @@ class HydraFloods(ProviderBase):
 
         """
         if not hasattr(self, "flood_extents"):
-            self._generate_flood_extents(dates=dates, clip_ocean=clip_ocean)
+            self._generate_flood_extents(dates=dates, clip_ocean=clip_ocean, mask_permanent_water=mask_permanent_water)
 
         try:
             with multiprocessing.pool.ThreadPool() as pool:
@@ -375,7 +388,7 @@ class HydraFloods(ProviderBase):
         m.add_layer(
             ee.Image("JRC/GSW1_4/GlobalSurfaceWater"),
             vis_params={"bands": ["occurrence"], "min": 0.0, "max": 100.0, "palette": ["ffffff", "ffbbbb", "0000ff"]},
-            name="JRC water occurrenceS",
+            name="JRC water occurrence",
         )
         return _add_aoi_and_zoom_to_bounds(m, ee_geom=self.ee_geometry, bbox=self.bbox)
 
