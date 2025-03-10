@@ -72,7 +72,11 @@ class WMSMap:
         slider_cntrl = WidgetControl(widget=self.slider, position="bottomright")
         m.add(slider_cntrl)
         xmin, ymin, xmax, ymax = self.bbox
-        bbox = Polygon(locations=[(ymin, xmax), (ymax, xmax), (ymax, xmin), (ymin, xmin)], color="red", fill_opacity=0)
+        bbox = Polygon(
+            locations=[(ymin, xmax), (ymax, xmax), (ymax, xmin), (ymin, xmin)],
+            color="red",
+            fill_opacity=0,
+        )
         m.add(bbox)
         m.fit_bounds(bounds=[[ymin, xmin], [ymax, xmax]])
         return m

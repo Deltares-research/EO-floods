@@ -59,7 +59,10 @@ class HydraFloods(ProviderBase):
         self.start_date = start_date
         self.end_date = end_date
         self.initial_datasets = datasets
-        self.datasets = [HydraFloodsDataset(dataset, self.ee_geometry, start_date, end_date) for dataset in datasets]
+        self.datasets = [
+            HydraFloodsDataset(dataset, self.ee_geometry, start_date, end_date)
+            for dataset in datasets
+        ]
 
     def available_data(self) -> None:
         """Information on the given datasets for the given temporal and spatial resolution.
@@ -150,7 +153,9 @@ class HydraFloods(ProviderBase):
             return _add_aoi_and_zoom_to_bounds(m=m, ee_geom=self.ee_geometry, bbox=self.bbox)
         return m
 
-    def select_data(self, datasets: list[str] | None = None, dates: list[str] | None = None) -> None:
+    def select_data(
+        self, datasets: list[str] | None = None, dates: list[str] | None = None
+    ) -> None:
         """Select data for processing.
 
         Parameters
@@ -169,7 +174,13 @@ class HydraFloods(ProviderBase):
                 f = _multiple_dates_filter(dates) if len(dates) > 1 else _date_filter(dates[0])
                 dataset.obj.filter(f, inplace=True)
 
-    def _generate_flood_extents(self, dates: list[str] | None = None, *, clip_ocean: bool = True, mask_permanent_water: bool = True) -> None:
+    def _generate_flood_extents(
+        self,
+        dates: list[str] | None = None,
+        *,
+        clip_ocean: bool = True,
+        mask_permanent_water: bool = True,
+    ) -> None:
         """Generate flood extents for the given temporal and spatial resolution.
 
         Parameters
@@ -185,7 +196,9 @@ class HydraFloods(ProviderBase):
             occurrence in JRC Global Surface water. By default True
 
         Returns
+        -------
             None
+
         """
         flood_extents = {}
         jrc_water_occurrence = ee.image.Image("JRC/GSW1_4/GlobalSurfaceWater")
@@ -230,7 +243,9 @@ class HydraFloods(ProviderBase):
             )
 
             # Invert values of flood extent so that water=1, land=0
-            flood_extent = flood_extent.apply_func(lambda x: x.eq(0).copyProperties(x, ["system:time_start"]))
+            flood_extent = flood_extent.apply_func(
+                lambda x: x.eq(0).copyProperties(x, ["system:time_start"])
+            )
 
             # Mask out permanent water
             if mask_permanent_water:
@@ -265,7 +280,7 @@ class HydraFloods(ProviderBase):
             and can thus be given an timeout.
         clip_ocean: bool
             Images will be clipped by country and ocean borders
-        mask_permanent_water: boolIf set to True this will mask permanent water. Permanent water is defined as 75% 
+        mask_permanent_water: boolIf set to True this will mask permanent water. Permanent water is defined as 75%
             occurrence in JRC Global Surface water. By default True
 
         Returns
@@ -276,11 +291,15 @@ class HydraFloods(ProviderBase):
 
         """
         if not hasattr(self, "flood_extents"):
-            self._generate_flood_extents(dates=dates, clip_ocean=clip_ocean, mask_permanent_water=mask_permanent_water)
+            self._generate_flood_extents(
+                dates=dates, clip_ocean=clip_ocean, mask_permanent_water=mask_permanent_water
+            )
 
         try:
             with multiprocessing.pool.ThreadPool() as pool:
-                return_value = pool.apply_async(self._plot_flood_extents, (zoom,)).get(timeout=timeout)
+                return_value = pool.apply_async(self._plot_flood_extents, (zoom,)).get(
+                    timeout=timeout
+                )
         except multiprocessing.TimeoutError as exc:
             err_msg = (
                 "Plotting flood extents has timed out, increase the time out"
@@ -333,7 +352,13 @@ class HydraFloods(ProviderBase):
             log.info(log_msg)
 
             if not scale:
-                scale = (self.flood_extents[ds].collection.first().select("water").projection().nominalScale(),)
+                scale = (
+                    self.flood_extents[ds]
+                    .collection.first()
+                    .select("water")
+                    .projection()
+                    .nominalScale(),
+                )
             batch_export(
                 collection=self.flood_extents[ds].collection,
                 collection_asset=ee_asset_path,
@@ -387,13 +412,20 @@ class HydraFloods(ProviderBase):
         # Add JRC water occurrence as reference
         m.add_layer(
             ee.Image("JRC/GSW1_4/GlobalSurfaceWater"),
-            vis_params={"bands": ["occurrence"], "min": 0.0, "max": 100.0, "palette": ["ffffff", "ffbbbb", "0000ff"]},
+            vis_params={
+                "bands": ["occurrence"],
+                "min": 0.0,
+                "max": 100.0,
+                "palette": ["ffffff", "ffbbbb", "0000ff"],
+            },
             name="JRC water occurrence",
         )
         return _add_aoi_and_zoom_to_bounds(m, ee_geom=self.ee_geometry, bbox=self.bbox)
 
 
-def _add_aoi_and_zoom_to_bounds(m: geemap.Map, ee_geom: ee.geometry, bbox: list[float]) -> geemap.Map:
+def _add_aoi_and_zoom_to_bounds(
+    m: geemap.Map, ee_geom: ee.geometry, bbox: list[float]
+) -> geemap.Map:
     m.add_layer(
         ee_object=ee.FeatureCollection(ee_geom).style(fillColor="00000000", color="red"),
         name="Area of interest",

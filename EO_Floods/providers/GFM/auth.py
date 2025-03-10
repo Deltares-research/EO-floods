@@ -12,7 +12,9 @@ from requests import Request
 log = logging.getLogger(__name__)
 
 
-def authenticate_gfm(email: str | None = None, pwd: str | None = None, *, from_env: bool = False) -> dict:
+def authenticate_gfm(
+    email: str | None = None, pwd: str | None = None, *, from_env: bool = False
+) -> dict:
     """Authenticate to the GFM server.
 
     Parameters

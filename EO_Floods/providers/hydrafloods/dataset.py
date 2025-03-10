@@ -173,7 +173,9 @@ class HydraFloodsDataset:
             "MODIS",
         ]:  # these datasets consist of global images, need to be clipped first before reducing
             self.obj.apply_func(func=lambda x: x.clip(self.region), inplace=True)
-        self.obj.apply_func(func=self._calculate_quality_score, inplace=True, band=self.qa_band, geom=self.region)
+        self.obj.apply_func(
+            func=self._calculate_quality_score, inplace=True, band=self.qa_band, geom=self.region,
+        )
         q_score = self.obj.collection.aggregate_array("q_score").getInfo()
         return [round(score, 2) for score in q_score]
 

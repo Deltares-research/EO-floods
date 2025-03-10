@@ -1,8 +1,6 @@
-from enum import Enum
 import logging
-
-
 from abc import ABC
+from enum import Enum
 
 log = logging.getLogger(__name__)
 
