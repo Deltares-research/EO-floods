@@ -57,7 +57,7 @@ def authenticate_gfm(
         if from_input_prompt:
             return authenticate_gfm(email, pwd)
     else:
-        raise r.raise_for_status()
+        r.raise_for_status()
     return None
 
 
