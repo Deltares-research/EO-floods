@@ -89,7 +89,9 @@ class FloodMap:
     @provider_name.setter
     def provider_name(self, _provider: str) -> None:
         if _provider not in PROVIDERS:
-            err_msg = f"Given provider '{_provider}' not supported, choose from: {' ,'.join(PROVIDERS)}"
+            err_msg = (
+                f"Given provider '{_provider}' not supported, choose from: {' ,'.join(PROVIDERS)}"
+            )
             raise ValueError(err_msg)
         self._provider_name = _provider
 
@@ -188,7 +190,9 @@ class FloodMap:
         if self.provider_name == "GFM":
             self.provider.select_data(dates=dates)
 
-    def view_flood_extents(self, timeout: int = 300, **kwargs: dict[Any]) -> geemap.Map | ipyleaflet.Map:
+    def view_flood_extents(
+        self, timeout: int = 300, **kwargs: dict[Any],
+    ) -> geemap.Map | ipyleaflet.Map:
         """Plot the generated flood extents on a map.
 
         Parameters
