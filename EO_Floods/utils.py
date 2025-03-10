@@ -6,7 +6,9 @@ import logging
 from datetime import datetime, timedelta
 
 import ee
+import ipywidgets as widgets
 from dateutil import parser
+from ipyleaflet import GeomanDrawControl, Map, WidgetControl
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ def date_parser(date_string: str) -> datetime:
     return parsed_date
 
 
-def get_centroid(bounding_box: list[float]) -> tuple[float]:
+def get_centroid(bounding_box: list[float]) -> tuple[float, float]:
     """Calculate centroid given a bounding box with xmin, ymin, xmax, ymax coordinates.
 
     Parameters
@@ -162,3 +164,35 @@ def dates_within_daterange(dates: list[str], start_date: str, end_date: str) -> 
             err_msg = f"Start date '{start_date}' must occur before end date '{end_date}'"
             raise ValueError(err_msg)
     return True
+
+
+class DrawBoundsMap(Map):
+    """Draw a bounding box on a map and receive the coordinates."""
+
+    def __init__(self) -> Map:
+        """Create a map object with the ability to draw a bounding box."""
+        super().__init__(zoom=2)
+        draw_control = GeomanDrawControl(circlemarker={}, polyline={}, polygon={})
+        draw_control.rectangle = {
+            "pathOptions": {"fillColor": "#fca45d", "color": "#fca45d", "fillOpacity": 0.2},
+        }
+        text = widgets.Text(placeholder="min x, min y, max x, max y", description="Bounding box")
+        widget_control = WidgetControl(widget=text, position="bottomright")
+
+        def handle_draw(*args, **kwargs) -> None: #noqa: ANN003, ANN002, ARG001
+            if kwargs.get("geo_json"):
+                coords = kwargs["geo_json"][-1]["geometry"]["coordinates"][0]
+                x_coords = [x[0] for x in coords]
+                y_coords = [y[1] for y in coords]
+                boundingbox = [
+                    str(min(x_coords)),
+                    str(min(y_coords)),
+                    str(max(x_coords)),
+                    str(max(y_coords)),
+                ]
+                text.value = ", ".join(boundingbox)
+
+        draw_control.on_draw(handle_draw)
+
+        self.add(draw_control)
+        self.add(widget_control)
