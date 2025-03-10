@@ -7,7 +7,7 @@ EO-Floods aims to provide an easy to use interface for generating or retrieving 
 To use the Hydrafloods provider an Earth Engine account and project is required, register [here](https://code.earthengine.google.com/register).
 For authenticating to Earth Engine see the paragraph below.
 
-You also need an account for GFM. You can register [here](https://global-flood.emergency.copernicus.eu/accounts/signup/).
+You also need an account for GFM. You can register [here](https://portal.gfm.eodc.eu/register).
 
 ### Earth Engine Authentication
 
