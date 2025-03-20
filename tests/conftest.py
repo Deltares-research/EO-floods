@@ -1,6 +1,6 @@
 import pytest
-from EO_Floods.providers.hydrafloods.auth import ee_initialize
-from EO_Floods.floodmap import FloodMap
+from eo_floods.providers.hydrafloods.auth import ee_initialize
+from eo_floods.floodmap import FloodMap
 
 ee_initialize()
 

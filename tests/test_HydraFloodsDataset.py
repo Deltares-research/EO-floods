@@ -1,6 +1,6 @@
 import hydrafloods as hf
-from EO_Floods.providers.hydrafloods.dataset import HydraFloodsDataset
-from EO_Floods.utils import coords_to_ee_geom
+from eo_floods.providers.hydrafloods.dataset import HydraFloodsDataset
+from eo_floods.utils import coords_to_ee_geom
 
 class TestCalcQualityScore:
     STARTDATE = "2022-10-01"

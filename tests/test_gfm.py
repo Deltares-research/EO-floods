@@ -5,8 +5,8 @@ import re
 
 from ipyleaflet import Map
 import pytest
-from EO_Floods.providers import GFM
-from EO_Floods.providers.GFM.auth import authenticate_gfm, _get_credentials_from_env
+from eo_floods.providers import GFM
+from eo_floods.providers.GFM.auth import authenticate_gfm, _get_credentials_from_env
 
 load_dotenv()
 

@@ -1,7 +1,6 @@
 import pytest
-import hydrafloods as hf
 
-from EO_Floods.utils import (
+from eo_floods.utils import (
     coords_to_ee_geom,
     dates_within_daterange,
 )
