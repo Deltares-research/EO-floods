@@ -3,9 +3,9 @@ import geemap.foliumap as geemap
 import logging
 import hydrafloods as hf
 import re
-from EO_Floods.floodmap import FloodMap, _instantiate_datasets
-from EO_Floods.providers.hydrafloods.dataset import Dataset, Sentinel1, VIIRS, DATASETS
-from EO_Floods.providers.hydrafloods import HydraFloods
+from eo_floods.floodmap import FloodMap, _instantiate_datasets
+from eo_floods.providers.hydrafloods.dataset import Dataset, Sentinel1, VIIRS, DATASETS
+from eo_floods.providers.hydrafloods import HydraFloods
 
 
 def test_init():

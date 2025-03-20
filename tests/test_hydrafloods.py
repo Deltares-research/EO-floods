@@ -5,8 +5,8 @@ import ee
 import geemap.foliumap as geemap
 import pytest
 import logging
-from EO_Floods.providers.hydrafloods import HydraFloodsDataset, HydraFloods
-from EO_Floods.providers.hydrafloods.dataset import DATASETS
+from eo_floods.providers.hydrafloods import HydraFloodsDataset, HydraFloods
+from eo_floods.providers.hydrafloods.dataset import DATASETS
 
 
 def hydrafloods_instance(dataset_list: list) -> HydraFloods:
