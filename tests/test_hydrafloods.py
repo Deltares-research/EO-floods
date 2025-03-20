@@ -7,6 +7,7 @@ import pytest
 import logging
 from eo_floods.providers.hydrafloods import HydraFloodsDataset, HydraFloods
 from eo_floods.providers.hydrafloods.dataset import DATASETS
+from eo_floods import FloodMap
 
 
 def hydrafloods_instance(dataset_list: list) -> HydraFloods:
@@ -84,7 +85,7 @@ def test_view_flood_extents():
         hf_provider.view_flood_extents(timeout=1)
 
 
-def test_export_data(mocker):
+def test_export_data_with_mocker(mocker):
     hf_provider = hydrafloods_instance(["Landsat 8"])
 
     mock_batch_export = mocker.patch("EO_Floods.providers.hydrafloods.hydrafloods.batch_export")
@@ -92,6 +93,21 @@ def test_export_data(mocker):
     assert mock_batch_export.call_count == 1
     hf_provider.export_data(include_base_data=True, scale=1000)
     assert mock_batch_export.call_count == 3
+
+
+@pytest.mark.integration
+def test_export_data():
+    floodmap = FloodMap(
+    start_date="2022-10-01",
+    end_date="2022-10-15",
+    provider="Hydrafloods",
+    geometry=[67.740187,27.712453,68.104933,28.000935],
+    )
+    floodmap.select_data(dates=["2022-10-14 13:36:35.000"],datasets=["Sentinel-1"])
+    floodmap.export_data(export_type="toDrive", folder="EO_Floods")
+
+
+
 
    
     

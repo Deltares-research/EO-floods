@@ -7,9 +7,9 @@ import multiprocessing.pool
 import re
 
 import ee
+import ee.batch
 import geemap.foliumap as geemap
 import hydrafloods as hf
-from hydrafloods.geeutils import batch_export
 from tabulate import tabulate
 
 from eo_floods.providers import ProviderBase
@@ -324,7 +324,7 @@ class HydraFloods(ProviderBase):
         ee_asset_path: str = "",
         clip_ocean: bool = True,
         dates: list[str] | None = None,
-        scale: float | None = None,
+        scale: float = 30,
         **kwargs: dict,
     ) -> None:
         """Export the generated data to a Google Drive or as Earth Engine asset.
@@ -358,37 +358,28 @@ class HydraFloods(ProviderBase):
             log_msg = f"Exporting {ds} flood extents {export_type[:2] + ' ' + export_type[2:]}"
             log.info(log_msg)
 
-            if not scale:
-                scale = (
-                    self.flood_extents[ds]
-                    .collection.first()
-                    .select("water")
-                    .projection()
-                    .nominalScale(),
-                )
-            batch_export(
+            _export_ee_collection(
                 collection=self.flood_extents[ds].collection,
-                collection_asset=ee_asset_path,
+                region=self.ee_geometry,
+                description=f"{ds.replace(' ', '_')}_flood_extent",
+                scale=scale,
                 export_type=export_type,
                 folder=folder,
-                suffix=f"{ds.replace(' ', '_')}_flood_extent",
-                scale=scale,
-                **kwargs,
+                ee_asset_path=ee_asset_path,
             )
 
         if include_base_data:
             for dataset in self.datasets:
                 log_msg = f"Exporting {dataset.name} {export_type[:2] + ' ' + export_type[2:]}"
                 log.info(log_msg)
-                batch_export(
+                _export_ee_collection(
                     collection=dataset.obj.collection,
-                    collection_asset=ee_asset_path + f"{dataset.short_name}_EO_Floodmap",
+                    region=self.ee_geometry,
+                    description=f"{dataset.short_name}_EO_Floodmap",
                     export_type=export_type,
+                    ee_asset_path=ee_asset_path,
                     folder=folder,
-                    region=dataset.obj.collection.geometry(),
-                    suffix=dataset.short_name,
-                    scale=dataset.obj.collection.first().select(1).projection().nominalScale(),
-                    **kwargs,
+                    scale=scale,
                 )
 
     def _plot_flood_extents(self, zoom: int) -> geemap.Map:
@@ -459,3 +450,38 @@ def _multiple_dates_filter(dates: list[str]) -> ee.Filter:
 
 def _filter_collection_by_dates(date: str, dataset: Dataset) -> ee.ImageCollection:
     return dataset.obj.collection.filter(_date_filter(date))
+
+
+def _export_ee_collection(
+    collection: ee.ImageCollection,
+    region: ee.geometry,
+    description: str,
+    folder: str | None = None,
+    scale: int = 30,
+    ee_asset_path: str | None = None,
+    export_type: str = "toDrive",
+) -> None:
+    n_images = collection.size().getInfo()
+    for i in range(n_images):
+        description = description + f"_{i}"
+        img = ee.Image(collection.toList(n_images).get(i))
+        if export_type == "toDrive":
+            task = ee.batch.Export.image.toDrive(
+                img,
+                description=description,
+                folder=folder,
+                scale=scale,
+                region=region,
+                maxPixels=1e13,
+            )
+        elif export_type == "toAsset":
+            asset_id = ee_asset_path + description
+            task = ee.batch.Export.image.toAsset(
+                img,
+                description=description,
+                region=region,
+                assetId=asset_id,
+                scale=scale,
+                maxPixels=1e13,
+            )
+        task.start()
