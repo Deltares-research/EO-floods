@@ -85,5 +85,5 @@ class WMSMap:
         time_options = get_dates_in_time_range(self.start_date, self.end_date)
         return SelectionSlider(description="Time:", options=time_options)
 
-    def _update_wms(self, value) -> None:
+    def _update_wms(self, value: int) -> None: #noqa: ARG002
         self.wms.time = self.slider.value
