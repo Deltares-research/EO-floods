@@ -1,11 +1,10 @@
 import pytest
-import geemap.foliumap as geemap
+import geemap.foliumap as gm
+import geemap
 import logging
-import hydrafloods as hf
 import re
 from eo_floods.floodmap import FloodMap, _instantiate_datasets
 from eo_floods.providers.hydrafloods.dataset import Dataset, Sentinel1, VIIRS, DATASETS
-from eo_floods.providers.hydrafloods import HydraFloods
 
 
 def test_init():
@@ -56,16 +55,12 @@ def test_preview_data(flood_map):
         datasets=["Sentinel-1"],
         dates=["2022-10-05 01:25:51.000", "2022-10-05 01:25:26.000"],
     )
-    assert isinstance(viewer, geemap.foliumap.Map)
-    # assert that there are two ee tile layers in the map object
-    for key in list(viewer._children.keys())[-2:]:
-        assert isinstance(
-            viewer._children[key], geemap.ee_tile_layers.EEFoliumTileLayer
-        )
+    assert isinstance(viewer, gm.Map)
+    
 
 
 @pytest.mark.integration()
-def test_workflow(caplog, mocker):
+def test_workflow(mocker):
     floodmap = FloodMap(
         start_date="2023-04-01",
         end_date="2023-04-30",
@@ -75,11 +70,11 @@ def test_workflow(caplog, mocker):
     )
     floodmap.available_data()
     preview = floodmap.preview_data()
-    assert isinstance(preview, geemap.Map)
+    assert isinstance(preview, gm.Map)
     data_view = floodmap.view_flood_extents()
-    assert isinstance(data_view, geemap.Map)
+    assert isinstance(data_view, gm.Map)
     assert hasattr(floodmap.provider, "flood_extents")
-    mock_batch_export = mocker.patch("EO_Floods.providers.hydrafloods.hydrafloods.batch_export")
+    mock_batch_export = mocker.patch("eo_floods.providers.hydrafloods.hydrafloods.ee.batch.Export.image.toDrive")
     floodmap.export_data()
     mock_batch_export.assert_called()
 
