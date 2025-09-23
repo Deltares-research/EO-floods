@@ -96,10 +96,10 @@ class GFM(ProviderBase):
             raise ValueError(err_msg)
         self.products = products
 
-    def export_data(self) -> None:
+    def export_data(self) -> list[str]:
         """Retrieve a download link for downloading the GFM data."""
         log.info("Retrieving download link")
-
+        links = []
         for product in self.products:
             r = requests.get(
                 url=API_URL + f"download/product/{product['product_id']}/{self.user['client_id']}",
@@ -109,7 +109,10 @@ class GFM(ProviderBase):
             if r.status_code != 200:  # noqa: PLR2004
                 r.raise_for_status()
             link = r.json()
+            links.append(link)
             log.info("Image: %s, download link: %s", product["product_time"], link)
+
+        return links
 
     def _create_aoi(self, geometry: list[float]) -> str:
         log.info("Uploading geometry to GFM server")
