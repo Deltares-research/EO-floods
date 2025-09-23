@@ -49,9 +49,10 @@ def test_GFM(caplog, mocker):
     gfm.export_data()
     for product in gfm.products:
         assert f"Image: {product['product_time']}, download link: {{'link': 'mock_link'}}" in caplog.text
-
-    with pytest.raises(ValueError, match="dates should be a list of dates, not <class 'str'>"):
-        gfm.select_data(dates="03-04-1995")
+    date_str = "03-04-1995"
+    err_msg = f"dates should be a list of dates, not {type(date_str)}"
+    with pytest.raises(TypeError, match=err_msg):
+        gfm.select_data(dates=date_str)
     
     with pytest.raises(
         ValueError, match="No data found for given date\(s\): 03-04-1995"

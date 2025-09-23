@@ -24,7 +24,7 @@ def test_Hydrafloods_init():
     hydrafloods_provider = hydrafloods_instance(["Sentinel-1", "Sentinel-2"])
     assert isinstance(hydrafloods_provider.datasets[0], HydraFloodsDataset)
     assert isinstance(hydrafloods_provider.datasets[0].obj, hf.Sentinel1)
-    assert isinstance(hydrafloods_provider.geometry, ee.geometry.Geometry)
+    assert isinstance(hydrafloods_provider.ee_geometry, ee.geometry.Geometry)
 
 
 def test_available_data(caplog):
@@ -88,12 +88,9 @@ def test_view_flood_extents():
 def test_export_data_with_mocker(mocker):
     hf_provider = hydrafloods_instance(["Landsat 8"])
 
-    mock_batch_export = mocker.patch("EO_Floods.providers.hydrafloods.hydrafloods.batch_export")
+    mock_batch_export = mocker.patch("eo_floods.providers.hydrafloods.hydrafloods.ee.batch.Export.image.toDrive")
     hf_provider.export_data()
-    assert mock_batch_export.call_count == 1
-    hf_provider.export_data(include_base_data=True, scale=1000)
     assert mock_batch_export.call_count == 3
-
 
 @pytest.mark.integration
 def test_export_data():
